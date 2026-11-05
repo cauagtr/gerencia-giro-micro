@@ -55,6 +55,13 @@
   .alerta-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #86EFAC; }
   .vazio { padding: 40px; text-align: center; color: var(--suave); }
 
+  .ajuda { display: inline-flex; align-items: center; justify-content: center; width: 15px; height: 15px; min-width: 15px; border-radius: 50%;
+    background: rgba(100,116,139,.18); color: #64748b; font-size: 10px; font-weight: 700; cursor: help; margin-left: 5px; vertical-align: middle;
+    font-family: 'IBM Plex Sans', sans-serif; line-height: 1; text-transform: none; letter-spacing: 0; }
+  .ajuda:hover, .ajuda:focus { background: var(--azul); color: #fff; outline: none; }
+  #dica { position: fixed; z-index: 9500; max-width: 320px; background: #1e293b; color: #f1f5f9; font-size: 12px; line-height: 1.55; padding: 10px 13px;
+    border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.3); pointer-events: none; display: none; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  @media print { .ajuda { display: none !important; } }
   /* LOGIN */
   #tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, #003366 0%, #004080 60%, #0b4f8c 100%); }
   .login-box { background: #fff; border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
@@ -232,6 +239,7 @@
 <div id="modal-raiz"></div>
 <div id="area-impressao"></div>
 <div id="toast"></div>
+<div id="dica"></div>
 
 <script>
 // ════════════════════════════════════════════════════════════
@@ -427,15 +435,29 @@ function prepararRegistro(sis, p) {
     municipio: (p.municipio || '').toString().trim(),
     arquivada: !!p.arquivada,
     transferencia: !!p.transferencia,
-    resp: normPessoa(p.responsavel),
-    estag: sis === 'fgf' ? normPessoa(p.estagiario) : null,
+    respBruto: normPessoa(p.responsavel),
+    estagBruto: sis === 'fgf' ? normPessoa(p.estagiario) : null,
   }
+  aplicarAtivo(r)
   // Tempo: decididas = cadastro → decisão (data em que entrou na etapa final)
   r.leadTime = final && cad && nae ? Math.max(0, diasEntre(cad, nae)) : null
   r.diasParado = !final && nae ? Math.max(0, diasEntre(nae, hojeIso())) : null
   r.idade = cad ? Math.max(0, diasEntre(cad, hojeIso())) : null
   return r
 }
+// Quem está inativo não aparece: a proposta é mostrada como N/A.
+// (respBruto/estagBruto guardam o nome gravado no banco.)
+function ativosDe(sis, papel) {
+  return new Set(CFG.colabs.filter(c => c.sistema === sis && c.ativo && (!papel || c.papel === papel)).map(c => c.nome))
+}
+function aplicarAtivo(r) {
+  if (!CFG.ok) { r.resp = r.respBruto; r.estag = r.estagBruto; return }
+  const respOk = ativosDe(r.sis, r.sis === 'micro' ? 'responsavel' : 'analista')
+  r.resp = respOk.has(r.respBruto) ? r.respBruto : 'N/A'
+  if (r.sis === 'fgf') r.estag = ativosDe('fgf', 'estagiario').has(r.estagBruto) ? r.estagBruto : 'N/A'
+  else r.estag = null
+}
+function reaplicarAtivos() { ['micro', 'fgf'].forEach(s => DADOS[s].forEach(aplicarAtivo)) }
 function pessoasDe(r) {
   const ps = []
   if (r.resp !== 'N/A') ps.push(r.resp)
@@ -450,6 +472,7 @@ async function carregarConfig() {
       api('config_linhas?select=*&order=sistema.asc,prioridade.asc'),
     ])
     CFG.colabs = c || []; CFG.linhas = l || []; CFG.ok = true
+    reaplicarAtivos()
   } catch(e) {
     CFG.ok = false
     console.error(e)
@@ -645,14 +668,14 @@ function renderFiltros() {
         ${[['ambos','Ambos'],['micro','Microcrédito'],['fgf','Giro Fácil']].map(([v, r]) =>
           `<button class="${FILTRO.sis === v ? 'on' : ''}" onclick="FILTRO.sis='${v}'; aplicarFiltros()">${r}</button>`).join('')}
       </div>
-      ${msFiltro('pessoa', '👤', 'Pessoas')}
+      ${msFiltro('pessoa', '👤', 'Pessoas')}${ajuda('Desmarque para tirar a pessoa da conta. No Giro Fácil a proposta continua aparecendo se o analista OU o estagiário dela estiver marcado.')}
       ${msFiltro('linha', '🏷️', 'Linhas')}
-      ${msFiltro('fase', '📊', 'Situação')}
+      ${msFiltro('fase', '📊', 'Situação')}${ajuda('Em andamento (separadas por fase) ou já decididas (concedidas ou recusadas/excluídas). Desmarque para tirar da conta.')}
       <label class="ms-opcao" style="padding:0"><input type="checkbox" ${FILTRO.arquivadas ? 'checked' : ''} onchange="FILTRO.arquivadas=this.checked; aplicarFiltros()"> incluir arquivadas</label>
       <button class="btn btn-sm" style="margin-left:auto" onclick="recarregar()">↻ Atualizar dados</button>
     </div>
     <div class="barra-filtros" style="margin-top:10px">
-      <span class="periodo">📅 Data de cadastro
+      <span class="periodo">📅 Data de cadastro${ajuda('Só entram propostas cadastradas entre essas datas. Vale para quase tudo; os gráficos semanais e a Carteira atual avisam quando não usam este filtro.')}
         <input type="date" value="${FILTRO.ini}" max="9999-12-31" onchange="if(dataPronta(this.value)){FILTRO.ini=this.value; aplicarFiltros()}">
         até
         <input type="date" value="${FILTRO.fim}" max="9999-12-31" onchange="if(dataPronta(this.value)){FILTRO.fim=this.value; aplicarFiltros()}">
@@ -665,6 +688,81 @@ function renderFiltros() {
     </div>`
 }
 function aplicarFiltros() { renderFiltros(); renderAba() }
+
+
+// ════════════ GLOSSÁRIO: o "?" ao lado de cada número e nome ════════════
+// Cada explicação diz o que é e, quando é uma conta, qual a conta (A ÷ B).
+const GLOSSARIO = {
+  'Propostas': 'Quantidade de propostas cadastradas no período do filtro (pela data de cadastro). Embaixo: soma dos valores pedidos.',
+  'Em andamento': 'Propostas que ainda não foram concedidas, recusadas nem excluídas. Embaixo: soma dos valores pedidos delas.',
+  'Concedidas': 'Propostas que chegaram ao fim com o crédito liberado (etapa Concedido). Embaixo: soma dos valores.',
+  'Recusadas + Excluídas': 'Propostas que terminaram sem crédito: recusadas pela análise ou excluídas (desistência, documentação, etc.). Embaixo: soma dos valores.',
+  'Recusadas + Excluídas no mês': 'Propostas recusadas ou excluídas naquele mês (pela data em que foram decididas).',
+  'Concedidas no mês': 'Propostas concedidas naquele mês (pela data em que foram decididas), não importa quando foram cadastradas.',
+  'Decididas': 'Propostas que já terminaram: concedidas + recusadas + excluídas.',
+  'Aprovação (quantidade)': 'De cada 100 propostas que já terminaram, quantas foram concedidas. Conta: concedidas ÷ (concedidas + recusadas + excluídas). As em andamento não entram, porque ainda não têm resultado.',
+  'Aprovação (valor)': 'Do dinheiro pedido nas propostas que já terminaram, quanto foi concedido. Conta: R$ concedido ÷ (R$ concedido + R$ recusado + R$ excluído). Se for maior que a aprovação por quantidade, os pedidos de valor mais alto estão sendo mais aprovados.',
+  'Aprovação': 'Concedidas ÷ decididas (decididas = concedidas + recusadas + excluídas), dentro do grupo da linha da tabela.',
+  'Aprovação das cadastradas no mês': 'Das propostas cadastradas naquele mês que já terminaram, quantas foram concedidas. Conta: concedidas ÷ decididas, só das cadastradas no mês.',
+  'Margem de erro': 'A taxa de aprovação é calculada com poucas propostas, então tem incerteza. A margem mostra entre que valores a taxa "verdadeira" provavelmente está (com 95% de segurança). Quanto menos propostas decididas, maior a margem. Ex.: 40% com margem de 30% a 50% quer dizer que a taxa real deve estar entre 30% e 50%.',
+  'Valor médio concedido': 'Valor médio de cada crédito concedido. Conta: R$ concedido ÷ quantidade de concedidas. Embaixo: o valor médio pedido (R$ pedido ÷ propostas).',
+  'Valor médio pedido': 'Valor médio pedido por proposta. Conta: R$ pedido ÷ quantidade de propostas.',
+  'Tempo até a concessão': 'Quantos dias leva do cadastro até a concessão. É o tempo típico (mediana): metade das concedidas levou menos que isso e metade levou mais. Usamos a mediana porque poucas propostas muito demoradas não distorcem o número.',
+  'Paradas há +30 dias': 'Propostas em andamento que estão há mais de 30 dias na mesma etapa. Conta embaixo: paradas ÷ em andamento.',
+  'Tempo típico parada': 'Há quantos dias as propostas estão na etapa atual, no meio da fila (mediana): metade está parada há menos que isso e metade há mais.',
+  'Tempo típico parada (em andamento)': 'Para as propostas em andamento: há quantos dias estão na etapa atual, pela mediana (metade há menos, metade há mais).',
+  'Média parada': 'Média simples dos dias parados: soma dos dias ÷ quantidade de propostas. Se for bem maior que o tempo típico, poucas propostas muito antigas estão puxando a média para cima.',
+  '10% mais lentas passam de': 'Das propostas nesta etapa, as 10% que estão paradas há mais tempo passam desse número de dias.',
+  'Mais tempo parada': 'A proposta que está há mais tempo nesta etapa.',
+  'Dias parada': 'Dias desde que a proposta entrou na etapa em que está hoje (data "Na Etapa Desde" até hoje).',
+  'Valor parado': 'Soma dos valores pedidos das propostas que estão nesta etapa.',
+  '% das em andamento': 'Quanto da carteira em andamento do sistema está com essa pessoa. Conta: em andamento da pessoa ÷ em andamento do sistema.',
+  '% paradas': 'Das propostas em andamento da pessoa, quantas estão paradas há mais de 30 dias. Conta: paradas ÷ em andamento.',
+  '% já decidida': 'Quanto das propostas cadastradas no mês já terminou. Conta: decididas ÷ cadastradas no mês. Se for baixo, a taxa de aprovação desse mês ainda vai mudar.',
+  '% concedida': 'Das cadastradas no mês, quantas já foram concedidas. Conta: concedidas ÷ cadastradas no mês (inclui as em andamento na conta).',
+  '% do valor': 'Peso do município no total. Conta: R$ concedido no município ÷ R$ concedido em todos os municípios.',
+  '% acumulado': 'Soma do % do valor deste município com todos os que estão acima dele na tabela.',
+  'Cadastradas': 'Propostas com data de cadastro naquele mês.',
+  'Média dos últimos 3 meses': 'Média de cadastros deste mês e dos 2 anteriores. Serve para ver a direção sem a oscilação de um mês para o outro.',
+  'Valor pedido': 'Soma dos valores solicitados nas propostas.',
+  'Valor concedido': 'Soma dos valores das propostas concedidas.',
+  'Valor': 'Valor solicitado na proposta.',
+  'Ainda em andamento': 'Propostas cadastradas no mês que ainda não terminaram.',
+  'Diferença': 'Microcrédito menos Giro Fácil. Para percentuais, a diferença é em pontos percentuais (p.p.): 40% − 35% = 5 p.p.',
+  'Fase': 'Agrupamento de etapas parecidas (Cadastro, Regularização, Análise, Aprovação, Contrato), para comparar os dois sistemas, que têm listas de etapas diferentes.',
+  'Papel': 'No Microcrédito cada proposta tem um responsável. No Giro Fácil tem um analista e um estagiário — cada um é contado separado.',
+  'Safra': 'Grupo de propostas cadastradas no mesmo mês.',
+  'Faixa': 'Faixa do valor pedido na proposta.',
+  'N/A': 'Sem responsável: a proposta não tem ninguém atribuído (ou era de alguém que saiu da equipe).',
+}
+const GLOSSARIO_TITULOS = {
+  'Propostas novas por semana': 'Quantas propostas foram cadastradas em cada semana (segunda a domingo). A linha tracejada é a tendência: a linha reta que melhor acompanha as barras. Ela mostra se o volume está subindo ou caindo e dá a previsão da semana atual.',
+  'Onde estão as propostas em andamento': 'Quantas propostas em andamento estão em cada fase do processo, agora.',
+  'O que chama atenção': 'Observações geradas automaticamente a partir dos números, para chamar atenção para o que está fora do normal.',
+  'O que os números mostram': 'Conclusões tiradas automaticamente dos números desta página, em linguagem direta.',
+  'Principais achados': 'Conclusões tiradas automaticamente dos números desta página.',
+  'Produção por colaborador': 'Uma linha por pessoa: quantas propostas tem, quantas estão em andamento, quantas terminaram e com que resultado, quanto foi concedido e quanto tempo leva.',
+  'Indicadores lado a lado': 'Os mesmos indicadores para os dois sistemas, no mesmo período e filtros.',
+  'Propostas cadastradas por mês': 'Quantidade de propostas cadastradas em cada mês, nos dois sistemas.',
+  'Aprovação por mês de cadastro': 'Para as propostas cadastradas em cada mês: concedidas ÷ decididas. Mostra se a aprovação está melhorando ou piorando ao longo do tempo.',
+  'Cadastros por mês': 'Propostas cadastradas em cada mês. A linha tracejada é a média dos últimos 3 meses.',
+  'Mês a mês': 'Resumo de cada mês: o que entrou (cadastradas) e o que foi decidido (concedidas, recusadas, excluídas).',
+  'Cadastros por semana (12 semanas)': 'Propostas cadastradas em cada semana, com a tendência das últimas 12 semanas.',
+  'Tempo típico parada em cada etapa': 'Para cada etapa: há quantos dias as propostas em andamento estão paradas nela (pela mediana: metade há menos, metade há mais).',
+  'Tempo parado por etapa (propostas em andamento)': 'Para cada etapa, quantas propostas estão lá e há quanto tempo. Serve para achar onde o processo trava.',
+  'Paradas por responsável': 'Para cada pessoa: quantas propostas em andamento tem e quantas estão paradas há mais de 30 dias.',
+  'As 25 propostas paradas há mais tempo': 'As propostas em andamento que estão há mais tempo na mesma etapa. Bom ponto de partida para cobrar andamento.',
+  'Aprovação por faixa de valor pedido': 'Taxa de aprovação (concedidas ÷ decididas) separada pelo valor pedido. Mostra se pedidos maiores passam mais ou menos.',
+  'Desempenho por linha de crédito': 'Os principais indicadores separados por linha de crédito.',
+  'Quanto tempo leva do cadastro à concessão': 'Das propostas concedidas, quantas levaram cada faixa de tempo, do cadastro até a concessão.',
+  'Em que dia da semana as propostas são cadastradas': 'Quantas propostas foram cadastradas em cada dia da semana. Explica por que o gráfico por dia sobe e desce tanto.',
+  'Onde o crédito concedido se concentra (municípios)': 'Os municípios que mais receberam crédito, do maior para o menor valor.',
+  'Safras: o que aconteceu com as cadastradas em cada mês': 'Para cada mês de cadastro: quanto já foi decidido, quanto foi concedido e quanto ainda está em andamento.',
+  'Propostas em andamento por pessoa e fase': 'A carteira de hoje: quantas propostas em andamento cada pessoa tem em cada fase.',
+  'Valor concedido por pessoa': 'Soma do valor concedido nas propostas de cada pessoa, no período do filtro.',
+}
+const ajuda = (txt, cls = '') => txt ? `<span class="ajuda ${cls}" tabindex="0" data-ajuda="${esc(txt)}">?</span>` : ''
+const ajudaDe = rot => ajuda(GLOSSARIO[rot])
 
 // ════════════ GRÁFICOS (SVG) ════════════
 function escalaMax(v) {
@@ -742,9 +840,9 @@ const FMT = {
   html: v => v ?? '',
 }
 function htmlBloco(b) {
-  const cab = (b.titulo ? `<div class="bloco-titulo">${esc(b.titulo)}</div>` : '') + (b.sub ? `<div class="bloco-sub">${b.sub}</div>` : '')
+  const cab = (b.titulo ? `<div class="bloco-titulo">${esc(b.titulo)}${ajuda(b.ajuda || GLOSSARIO_TITULOS[b.titulo])}</div>` : '') + (b.sub ? `<div class="bloco-sub">${b.sub}</div>` : '')
   if (b.tipo === 'kpis') return `<div class="bloco">${cab}<div class="kpi-grade">${b.itens.map(k =>
-    `<div class="kpi" style="border-left-color:${k.cor || 'var(--azul)'}"><div class="kpi-rot">${esc(k.rot)}</div><div class="kpi-val">${k.val}</div>${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}</div>`).join('')}</div></div>`
+    `<div class="kpi" style="border-left-color:${k.cor || 'var(--azul)'}"><div class="kpi-rot">${esc(k.rot)}${ajuda(k.ajuda || GLOSSARIO[k.rot])}</div><div class="kpi-val">${k.val}</div>${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}</div>`).join('')}</div></div>`
   if (b.tipo === 'lado') return `<div class="bloco">${cab}<div class="lado-a-lado">${b.colunas.map(c =>
     `<div class="bloco-sis"><h3>${c.titulo}</h3>${c.blocos.map(htmlBloco).join('')}</div>`).join('')}</div></div>`
   if (b.tipo === 'grafico') return `<div class="bloco">${cab}<div class="grafico">${b.svg}</div>${b.legenda ? `<div class="legenda">${b.legenda.map(l => `<span><i style="background:${l.cor}${l.tracejado ? ';height:2px;vertical-align:3px;border-top:2px dashed ' + l.cor + ';background:none' : ''}"></i>${esc(l.rot)}</span>`).join('')}</div>` : ''}</div>`
@@ -752,8 +850,8 @@ function htmlBloco(b) {
   if (b.tipo === 'tabela') {
     if (!b.linhas.length) return `<div class="bloco">${cab}<div class="vazio">Sem dados para os filtros escolhidos.</div></div>`
     const num = c => ['int','brl','pct','dias','num','ic'].includes(c.tipo)
-    return `<div class="bloco bloco-tab">${cab}<div class="tab-wrap"><table class="t"><thead><tr>${b.colunas.map(c => `<th class="${num(c) ? 'n' : ''}">${esc(c.rot)}</th>`).join('')}</tr></thead><tbody>
-      ${b.linhas.map(l => `<tr>${l.map((v, i) => `<td class="${num(b.colunas[i]) ? 'n' : ''}">${(b.colunas[i].fmt || FMT[b.colunas[i].tipo] || FMT.txt)(v)}</td>`).join('')}</tr>`).join('')}
+    return `<div class="bloco bloco-tab">${cab}<div class="tab-wrap"><table class="t"><thead><tr>${b.colunas.map(c => `<th class="${num(c) ? 'n' : ''}">${esc(c.rot)}${ajuda(c.ajuda || GLOSSARIO[c.rot])}</th>`).join('')}</tr></thead><tbody>
+      ${b.linhas.map(l => `<tr>${l.map((v, i) => `<td class="${num(b.colunas[i]) ? 'n' : ''}">${(b.colunas[i].fmt || FMT[b.colunas[i].tipo] || FMT.txt)(v)}${v === 'N/A' ? ajudaDe('N/A') : ''}</td>`).join('')}</tr>`).join('')}
       ${b.total ? `<tr class="total">${b.total.map((v, i) => `<td class="${num(b.colunas[i]) ? 'n' : ''}">${v === '' ? '' : (b.colunas[i].fmt || FMT[b.colunas[i].tipo] || FMT.txt)(v)}</td>`).join('')}</tr>` : ''}
     </tbody></table></div></div>`
   }
@@ -791,9 +889,20 @@ function exportarExcel(rel, incluirDados = true) {
     if (b.tipo === 'notas') { resumoLinhas.push([]); resumoLinhas.push([b.titulo || 'Observações']); b.itens.forEach(n => resumoLinhas.push([n.txt.replace(/<[^>]+>/g, '')])) }
   })
   juntarKpis(rel.blocos)
+  // Como ler: explicação de cada coluna e indicador usado neste relatório
+  const usadosGl = new Set()
+  const varrer = bl => bl.forEach(b => {
+    if (b.tipo === 'kpis') b.itens.forEach(k => GLOSSARIO[k.rot] && usadosGl.add(k.rot))
+    if (b.tipo === 'tabela') b.colunas.forEach(c => GLOSSARIO[c.rot] && usadosGl.add(c.rot))
+    if (b.tipo === 'lado') b.colunas.forEach(c => varrer(c.blocos))
+  })
+  varrer(rel.blocos)
+  const wsG = XLSX.utils.aoa_to_sheet([['Indicador / coluna', 'O que significa e como é calculado'], ...[...usadosGl].map(k => [k, GLOSSARIO[k]])])
+  wsG['!cols'] = [{ wch: 32 }, { wch: 120 }]
   const wsR = XLSX.utils.aoa_to_sheet(resumoLinhas)
   wsR['!cols'] = [{ wch: 48 }, { wch: 22 }, { wch: 40 }]
   XLSX.utils.book_append_sheet(wb, wsR, nomeAba('Resumo'))
+  XLSX.utils.book_append_sheet(wb, wsG, nomeAba('Como ler'))
   // Tabelas
   const tabelas = []
   const coletar = bl => bl.forEach(b => { if (b.tipo === 'tabela') tabelas.push(b); if (b.tipo === 'lado') b.colunas.forEach(c => coletar(c.blocos)) })
@@ -855,11 +964,11 @@ function kpisDe(sis, r) {
     { rot: 'Em andamento', val: fmtInt(r.ativas), sub: fmtBRLk(r.valorAtivas), cor: c },
     { rot: 'Concedidas', val: fmtInt(r.conc), sub: fmtBRLk(r.valorConc), cor: '#15803D' },
     { rot: 'Recusadas + Excluídas', val: fmtInt(r.nao), sub: fmtBRLk(r.valorNao), cor: '#B91C1C' },
-    { rot: 'Conversão (qtd)', val: fmtPct(r.convQtd), sub: r.decididas ? `IC 95%: ${fmtPct(r.ic[0], 0)} a ${fmtPct(r.ic[1], 0)} · ${fmtInt(r.decididas)} decididas` : 'sem decididas', cor: c },
-    { rot: 'Conversão (valor)', val: fmtPct(r.convValor), sub: 'R$ concedido ÷ R$ decidido', cor: c },
-    { rot: 'Ticket médio concedido', val: r.ticketConc ? fmtBRLk(r.ticketConc) : '—', sub: 'pedido médio ' + (r.ticketPedido ? fmtBRLk(r.ticketPedido) : '—'), cor: c },
-    { rot: 'Cadastro → concessão', val: fmtDias(r.leadMediana), sub: r.leadP25 !== null ? `mediana · metade entre ${Math.round(r.leadP25)} e ${Math.round(r.leadP75)} d` : 'mediana', cor: c },
-    { rot: `Paradas há +${DIAS_PARADA} dias`, val: fmtInt(r.paradas), sub: r.ativas ? fmtPct(r.paradas / r.ativas, 0) + ' das em andamento' : '', cor: r.paradas ? '#D97706' : c },
+    { rot: 'Aprovação (quantidade)', val: fmtPct(r.convQtd), sub: r.decididas ? `${fmtInt(r.conc)} concedidas ÷ ${fmtInt(r.decididas)} decididas · pode variar entre ${fmtPct(r.ic[0], 0)} e ${fmtPct(r.ic[1], 0)}` : 'nenhuma decidida ainda', cor: c },
+    { rot: 'Aprovação (valor)', val: fmtPct(r.convValor), sub: `${fmtBRLk(r.valorConc)} concedidos ÷ ${fmtBRLk(r.valorConc + r.valorNao)} decididos`, cor: c },
+    { rot: 'Valor médio concedido', val: r.ticketConc ? fmtBRLk(r.ticketConc) : '—', sub: 'valor médio pedido: ' + (r.ticketPedido ? fmtBRLk(r.ticketPedido) : '—'), cor: c },
+    { rot: 'Tempo até a concessão', val: fmtDias(r.leadMediana), sub: r.leadP25 !== null ? `a maioria leva entre ${Math.round(r.leadP25)} e ${Math.round(r.leadP75)} dias` : 'sem concedidas', cor: c },
+    { rot: 'Paradas há +30 dias', val: fmtInt(r.paradas), sub: r.ativas ? `${fmtInt(r.paradas)} ÷ ${fmtInt(r.ativas)} em andamento = ${fmtPct(r.paradas / r.ativas, 0)}` : '', cor: r.paradas ? '#D97706' : c },
   ]}
 }
 
@@ -901,13 +1010,13 @@ function relVisao() {
   const tend = sem.map((_, i) => reg.prever(i))
   const ultima = completas[completas.length - 1], penult = completas[completas.length - 2]
   blocos.push({ tipo: 'grafico', titulo: 'Propostas novas por semana',
-    sub: `Últimas 8 semanas completas + semana atual (mais clara). Semana passada: <b>${ultima}</b> (${ultima >= penult ? '▲' : '▼'} ${Math.abs(ultima - penult)} vs. anterior) · média ${fmtNum(media(completas))} · tendência ${reg.b >= 0 ? '+' : ''}${fmtNum(reg.b)} por semana · previsão desta semana: <b>${Math.round(reg.prever(completas.length))}</b>. Esse gráfico ignora o período do filtro.`,
+    sub: `Semanas de segunda a domingo, pela data de cadastro. A barra mais clara é a semana atual, que ainda não terminou. Semana passada: <b>${ultima}</b> (${ultima >= penult ? '▲' : '▼'} ${Math.abs(ultima - penult)} em relação à anterior) · média ${fmtNum(media(completas))} por semana · a linha tracejada mostra a tendência (${reg.b >= 0 ? 'sobe' : 'cai'} ~${fmtNum(Math.abs(reg.b))} por semana) · previsão para esta semana: <b>${Math.round(reg.prever(completas.length))}</b>. Este gráfico não usa o filtro de período.`,
     svg: gBarras({ categorias: sem.map(w => w.rot), series, tendencia: { valores: tend, cor: '#0f172a' }, destacarUltima: true }),
-    legenda: [...series.map(s => ({ cor: s.cor, rot: s.nome })), { cor: '#0f172a', rot: 'tendência (regressão linear do total)', tracejado: true }] })
+    legenda: [...series.map(s => ({ cor: s.cor, rot: s.nome })), { cor: '#0f172a', rot: 'tendência (linha reta que melhor acompanha as semanas)', tracejado: true }] })
 
   // Carteira em andamento por fase
   blocos.push({ tipo: 'grafico', titulo: 'Onde estão as propostas em andamento',
-    sub: 'Quantidade por fase. As fases agrupam etapas parecidas para comparar os dois sistemas.',
+    sub: 'Quantidade de propostas em andamento em cada fase. As fases juntam etapas parecidas para dar para comparar os dois sistemas, que têm listas de etapas diferentes.',
     svg: gBarras({ categorias: FASES, series: sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: FASES.map(f => filtrar(s).filter(r => !r.final && r.fase === f).length) })), altura: 230 }),
     legenda: sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })) })
 
@@ -919,16 +1028,16 @@ function notasAutomaticas(sists, res) {
   const n = []
   sists.forEach(s => {
     const r = res[s]
-    if (r.decididas && r.decididas < 30) n.push({ ico: '⚠️', txt: `<b>${SIS[s].nome}:</b> só ${r.decididas} propostas decididas no período — percentuais oscilam muito com amostra pequena. Veja o intervalo de confiança.` })
+    if (r.decididas && r.decididas < 30) n.push({ ico: '⚠️', txt: `<b>${SIS[s].nome}:</b> só ${r.decididas} propostas decididas no período — com tão poucas, a taxa de aprovação ainda pode mudar bastante. Veja a margem de erro.` })
     if (r.ativas && r.paradas / r.ativas > 0.25) n.push({ ico: '⏳', txt: `<b>${SIS[s].nome}:</b> ${fmtPct(r.paradas / r.ativas, 0)} das em andamento estão paradas há mais de ${DIAS_PARADA} dias (${r.paradas} propostas). Veja o relatório de Gargalos.` })
     if (r.convQtd !== null && r.convValor !== null && Math.abs(r.convQtd - r.convValor) > 0.08)
-      n.push({ ico: '💡', txt: `<b>${SIS[s].nome}:</b> a conversão por valor (${fmtPct(r.convValor)}) é ${r.convValor > r.convQtd ? 'maior' : 'menor'} que por quantidade (${fmtPct(r.convQtd)}) — os pedidos ${r.convValor > r.convQtd ? 'maiores são aprovados com mais frequência' : 'maiores são recusados com mais frequência'}.` })
+      n.push({ ico: '💡', txt: `<b>${SIS[s].nome}:</b> a conversão por valor (${fmtPct(r.convValor)}) é ${r.convValor > r.convQtd ? 'maior' : 'menor'} que por quantidade (${fmtPct(r.convQtd)}) — ${r.convValor > r.convQtd ? 'os pedidos de valor mais alto são aprovados com mais frequência' : 'os pedidos de valor mais alto são recusados com mais frequência'}.` })
   })
   if (sists.length === 2) {
     const a = res.micro, b = res.fgf
     const t = testeDuasProporcoes(a.conc, a.decididas, b.conc, b.decididas)
-    if (t) n.push({ ico: '📐', txt: `Conversão: Microcrédito ${fmtPct(a.convQtd)} × Giro Fácil ${fmtPct(b.convQtd)} (diferença de ${fmtNum(Math.abs(t.dif) * 100)} p.p.). ${t.p < 0.05 ? `<b>A diferença é estatisticamente significativa</b> (p = ${t.p < 0.001 ? '< 0,001' : fmtNum(t.p, 3)}).` : `A diferença <b>não é estatisticamente significativa</b> (p = ${fmtNum(t.p, 2)}) — pode ser acaso.`}` })
-    if (a.leadMediana !== null && b.leadMediana !== null) n.push({ ico: '⏱️', txt: `Tempo mediano do cadastro à concessão: Microcrédito <b>${fmtDias(a.leadMediana)}</b> × Giro Fácil <b>${fmtDias(b.leadMediana)}</b>.` })
+    if (t) n.push({ ico: '📐', txt: `Conversão: Microcrédito ${fmtPct(a.convQtd)} × Giro Fácil ${fmtPct(b.convQtd)} (diferença de ${fmtNum(Math.abs(t.dif) * 100)} p.p.). ${t.p < 0.05 ? `<b>Essa diferença é real</b>: a chance de ser só coincidência é de ${t.p < 0.001 ? 'menos de 0,1%' : fmtPct(t.p, 1)}.` : `<b>Essa diferença pode ser coincidência</b>: há ${fmtPct(t.p, 0)} de chance de ela aparecer mesmo se os dois sistemas aprovassem na mesma proporção.`}` })
+    if (a.leadMediana !== null && b.leadMediana !== null) n.push({ ico: '⏱️', txt: `Tempo típico do cadastro até a concessão (metade leva menos, metade leva mais): Microcrédito <b>${fmtDias(a.leadMediana)}</b> × Giro Fácil <b>${fmtDias(b.leadMediana)}</b>.` })
   }
   if (!n.length) n.push({ ico: '✅', txt: 'Nenhum ponto fora do normal nos filtros atuais.' })
   return n
@@ -954,13 +1063,13 @@ function relProducao() {
   linhas.sort((a, b) => a.sis.localeCompare(b.sis) || a.papel.localeCompare(b.papel) || (a.pessoa === 'N/A') - (b.pessoa === 'N/A') || b.r.valorConc - a.r.valorConc)
   const tabela = {
     tipo: 'tabela', titulo: 'Produção por colaborador', aba: 'Produção',
-    sub: 'Conversão = concedidas ÷ decididas. O intervalo de confiança (IC 95%) mostra a margem de incerteza: quanto menos propostas decididas, mais largo.',
+    sub: 'Aprovação = concedidas ÷ decididas (decididas = concedidas + recusadas + excluídas). A margem de erro mostra entre que valores a taxa real provavelmente está: quanto menos propostas decididas, maior a margem.',
     colunas: [
       { rot: 'Sistema', tipo: 'txt' }, { rot: 'Pessoa', tipo: 'txt' }, { rot: 'Papel', tipo: 'txt' },
-      { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: '% da carteira ativa', tipo: 'pct' },
-      { rot: 'Paradas +30d', tipo: 'int' }, { rot: 'Concedidas', tipo: 'int' }, { rot: 'Rec + Exc', tipo: 'int' },
-      { rot: 'Conversão (qtd)', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Conversão (valor)', tipo: 'pct' },
-      { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Ticket médio', tipo: 'brl' }, { rot: 'Cadastro→concessão (mediana)', tipo: 'dias' },
+      { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: '% das em andamento', tipo: 'pct' },
+      { rot: 'Paradas há +30 dias', tipo: 'int' }, { rot: 'Concedidas', tipo: 'int' }, { rot: 'Recusadas + Excluídas', tipo: 'int' },
+      { rot: 'Aprovação (quantidade)', tipo: 'pct' }, { rot: 'Margem de erro', tipo: 'ic' }, { rot: 'Aprovação (valor)', tipo: 'pct' },
+      { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Valor médio concedido', tipo: 'brl' }, { rot: 'Tempo até a concessão', tipo: 'dias' },
     ],
     linhas: linhas.map(({ sis, pessoa, papel, r }) => [SIS[sis].curto, pessoa, papel, r.total, r.ativas, ativasSis[sis] ? r.ativas / ativasSis[sis] : null,
       r.paradas, r.conc, r.nao, r.convQtd, r.ic, r.convValor, r.valorConc, r.ticketConc, r.leadMediana]),
@@ -970,7 +1079,7 @@ function relProducao() {
   const notas = []
   if (confiaveis.length >= 2) {
     const melhor = [...confiaveis].sort((a, b) => b.r.ic[0] - a.r.ic[0])[0]
-    notas.push({ ico: '🏆', txt: `Maior conversão com segurança estatística: <b>${melhor.pessoa}</b> (${SIS[melhor.sis].curto}, ${melhor.papel}) — ${fmtPct(melhor.r.convQtd)} em ${melhor.r.decididas} decididas; mesmo no pior cenário do IC, fica em ${fmtPct(melhor.r.ic[0], 0)}.` })
+    notas.push({ ico: '🏆', txt: `Maior taxa de aprovação, considerando a margem de erro: <b>${melhor.pessoa}</b> (${SIS[melhor.sis].curto}, ${melhor.papel}) — ${fmtPct(melhor.r.convQtd)} em ${melhor.r.decididas} decididas. Mesmo no pior cenário da margem de erro, fica em ${fmtPct(melhor.r.ic[0], 0)}.` })
     const maisValor = [...confiaveis].sort((a, b) => b.r.valorConc - a.r.valorConc)[0]
     notas.push({ ico: '💰', txt: `Maior valor concedido: <b>${maisValor.pessoa}</b> (${SIS[maisValor.sis].curto}) com ${fmtBRL(maisValor.r.valorConc)}.` })
   }
@@ -984,7 +1093,7 @@ function relProducao() {
   const top = linhas.filter(l => l.pessoa !== 'N/A' && l.r.valorConc > 0).sort((a, b) => b.r.valorConc - a.r.valorConc).slice(0, 15)
   return { titulo: 'Produção por colaborador', blocos: [
     tabela,
-    { tipo: 'notas', titulo: 'Leitura', itens: notas },
+    { tipo: 'notas', titulo: 'O que os números mostram', itens: notas },
     { tipo: 'grafico', titulo: 'Valor concedido por pessoa', svg: gBarrasH({ itens: top.map(l => ({ rot: `${l.pessoa} · ${SIS[l.sis].curto}`, val: l.r.valorConc, cor: corSis(l.sis), extra: `${l.r.conc} conc.` })), formato: fmtBRLk }), legenda: sistemasAtivos().map(s => ({ cor: corSis(s), rot: SIS[s].nome })) },
   ]}
 }
@@ -999,29 +1108,29 @@ function relComparativo() {
   const met = [
     lin('Propostas', a.total, b.total, 'int'), lin('Em andamento', a.ativas, b.ativas, 'int'),
     lin('Concedidas', a.conc, b.conc, 'int'), lin('Recusadas + Excluídas', a.nao, b.nao, 'int', false),
-    lin('Conversão (quantidade)', a.convQtd, b.convQtd, 'pct'), lin('Conversão (valor)', a.convValor, b.convValor, 'pct'),
+    lin('Aprovação (quantidade)', a.convQtd, b.convQtd, 'pct'), lin('Aprovação (valor)', a.convValor, b.convValor, 'pct'),
     lin('Valor pedido', a.valorTotal, b.valorTotal, 'brl'), lin('Valor concedido', a.valorConc, b.valorConc, 'brl'),
-    lin('Pedido médio', a.ticketPedido, b.ticketPedido, 'brl'), lin('Ticket médio concedido', a.ticketConc, b.ticketConc, 'brl'),
-    lin('Cadastro → concessão (mediana)', a.leadMediana, b.leadMediana, 'dias', false),
-    lin('Mediana de dias parada (em andamento)', a.paradoMediana, b.paradoMediana, 'dias', false),
-    lin(`Paradas há +${DIAS_PARADA} dias`, a.paradas, b.paradas, 'int', false),
+    lin('Valor médio pedido', a.ticketPedido, b.ticketPedido, 'brl'), lin('Valor médio concedido', a.ticketConc, b.ticketConc, 'brl'),
+    lin('Tempo até a concessão', a.leadMediana, b.leadMediana, 'dias', false),
+    lin('Tempo típico parada (em andamento)', a.paradoMediana, b.paradoMediana, 'dias', false),
+    lin('Paradas há +30 dias', a.paradas, b.paradas, 'int', false),
   ]
   const fmtT = (v, t) => v === null ? '—' : t === 'pct' ? fmtPct(v) : t === 'brl' ? fmtBRL(v) : t === 'dias' ? fmtDias(v) : fmtInt(v)
   const fmtDif = (d, t) => d === null ? '—' : (d > 0 ? '+' : '') + (t === 'pct' ? fmtNum(d * 100) + ' p.p.' : t === 'brl' ? fmtBRL(d) : t === 'dias' ? Math.round(d) + ' d' : fmtInt(d))
-  const tabela = { tipo: 'tabela', titulo: 'Indicadores lado a lado', aba: 'Comparativo', sub: 'Diferença = Microcrédito − Giro Fácil.',
+  const tabela = { tipo: 'tabela', titulo: 'Indicadores lado a lado', aba: 'Comparativo', sub: 'Diferença = valor do Microcrédito − valor do Giro Fácil. Para %, a diferença é em pontos percentuais (p.p.): 40% − 35% = 5 p.p.',
     colunas: [{ rot: 'Indicador', tipo: 'txt' }, { rot: 'Microcrédito', tipo: 'html' }, { rot: 'Giro Fácil', tipo: 'html' }, { rot: 'Diferença', tipo: 'html' }],
     linhas: met.map(([rot, va, vb, d, t]) => [rot, fmtT(va, t), fmtT(vb, t), fmtDif(d, t)]) }
   const t = testeDuasProporcoes(a.conc, a.decididas, b.conc, b.decididas)
-  const notas = [{ ico: '📐', txt: t ? `Teste de diferença de proporções (conversão): z = ${fmtNum(t.z, 2)}, p ${t.p < 0.001 ? '< 0,001' : '= ' + fmtNum(t.p, 3)}. ${t.p < 0.05 ? '<b>Há diferença real</b> entre os sistemas, não é acaso.' : 'A diferença <b>pode ser acaso</b> com a quantidade de propostas atual.'}` : 'Sem propostas decididas suficientes para testar.' },
-    { ico: 'ℹ️', txt: 'Os produtos são diferentes (valores e público): compare taxas e prazos, não o volume absoluto.' }]
+  const notas = [{ ico: '📐', txt: t ? `Aprovação: Microcrédito ${fmtPct(a.convQtd)} × Giro Fácil ${fmtPct(b.convQtd)}. ${t.p < 0.05 ? `<b>A diferença é real</b>: a chance de ser coincidência é de ${t.p < 0.001 ? 'menos de 0,1%' : fmtPct(t.p, 1)}.` : `<b>A diferença pode ser coincidência</b> (${fmtPct(t.p, 0)} de chance) — com a quantidade de propostas atual, não dá para afirmar que um sistema aprova mais que o outro.`}` : 'Sem propostas decididas suficientes para testar.' },
+    { ico: 'ℹ️', txt: 'Os produtos são diferentes (valores e público). Compare as taxas e os prazos, não a quantidade nem o valor total.' }]
   // Mensal
   const meses = mesesDaBase()
   const porMes = (sis, f) => meses.map(m => filtrar(sis).filter(r => r.cad && r.cad.slice(0, 7) === m && f(r)).length)
   const convSafra = sis => meses.map(m => { const l = filtrar(sis).filter(r => r.cad && r.cad.slice(0, 7) === m), c = l.filter(r => r.final === 'conc').length, d = l.filter(r => r.final).length; return d >= 5 ? c / d : null })
   return { titulo: 'Comparativo Microcrédito × Giro Fácil', blocos: [
-    tabela, { tipo: 'notas', titulo: 'Leitura', itens: notas },
+    tabela, { tipo: 'notas', titulo: 'O que os números mostram', itens: notas },
     { tipo: 'grafico', titulo: 'Propostas cadastradas por mês', svg: gBarras({ categorias: meses.map(rotMes), series: [{ nome: 'Microcrédito', cor: corSis('micro'), valores: porMes('micro', () => true) }, { nome: 'Giro Fácil', cor: corSis('fgf'), valores: porMes('fgf', () => true) }] }), legenda: [{ cor: corSis('micro'), rot: 'Microcrédito' }, { cor: corSis('fgf'), rot: 'Giro Fácil' }] },
-    { tipo: 'grafico', titulo: 'Conversão da safra (por mês de cadastro)', sub: 'Das propostas cadastradas em cada mês e já decididas, quantas foram concedidas. Meses com menos de 5 decididas ficam em branco. Meses recentes ainda estão "amadurecendo".',
+    { tipo: 'grafico', titulo: 'Aprovação por mês de cadastro', sub: 'Para cada mês: concedidas ÷ decididas, contando só as propostas cadastradas naquele mês. Meses com menos de 5 decididas ficam em branco. Os meses recentes ainda vão mudar, porque muitas propostas deles ainda não foram decididas.',
       svg: gLinhas({ categorias: meses.map(rotMes), series: [{ nome: 'Microcrédito', cor: corSis('micro'), valores: convSafra('micro') }, { nome: 'Giro Fácil', cor: corSis('fgf'), valores: convSafra('fgf') }], formato: v => fmtPct(v, 0), max: 1 }),
       legenda: [{ cor: corSis('micro'), rot: 'Microcrédito' }, { cor: corSis('fgf'), rot: 'Giro Fácil' }] },
   ]}
@@ -1048,29 +1157,29 @@ function relEvolucao() {
   const reg = regressao(completos.map(l => l.cad))
   const proj = Math.round(reg.prever(completos.length))
   const tabela = { tipo: 'tabela', titulo: 'Mês a mês', aba: 'Evolução mensal',
-    sub: 'Cadastradas = pela data de cadastro. Concedidas e recusadas = pelo mês em que foram decididas. Conversão da safra = das cadastradas no mês e já decididas, % concedidas. Maturidade = % da safra que já foi decidida.',
-    colunas: [{ rot: 'Mês', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: 'Média móvel 3m', tipo: 'num' }, { rot: 'Valor pedido', tipo: 'brl' },
-      { rot: 'Concedidas no mês', tipo: 'int' }, { rot: 'Rec + Exc no mês', tipo: 'int' }, { rot: 'Valor concedido', tipo: 'brl' },
-      { rot: 'Conversão da safra', tipo: 'pct' }, { rot: 'Maturidade', tipo: 'pct' }],
+    sub: 'Cadastradas: contadas pelo mês da data de cadastro. Concedidas e recusadas: contadas pelo mês em que foram decididas. Aprovação das cadastradas no mês = concedidas ÷ decididas, só das cadastradas naquele mês. % já decidida = decididas ÷ cadastradas do mês.',
+    colunas: [{ rot: 'Mês', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: 'Média dos últimos 3 meses', tipo: 'num' }, { rot: 'Valor pedido', tipo: 'brl' },
+      { rot: 'Concedidas no mês', tipo: 'int' }, { rot: 'Recusadas + Excluídas no mês', tipo: 'int' }, { rot: 'Valor concedido', tipo: 'brl' },
+      { rot: 'Aprovação das cadastradas no mês', tipo: 'pct' }, { rot: '% já decidida', tipo: 'pct' }],
     linhas: linhas.map((l, i) => [rotMes(l.m), l.cad, mm[i], l.valorPedido, l.conc, l.nao, l.valorConc, l.convSafra, l.maturidade]),
     total: ['Total', soma(cadSerie), '', soma(linhas.map(l => l.valorPedido)), soma(linhas.map(l => l.conc)), soma(linhas.map(l => l.nao)), soma(linhas.map(l => l.valorConc)), '', ''] }
   const notas = [
-    { ico: '📈', txt: `Tendência dos cadastros (regressão linear dos meses completos): <b>${reg.b >= 0 ? '+' : ''}${fmtNum(reg.b)} propostas por mês</b> · R² = ${fmtNum(reg.r2, 2)} ${reg.r2 < 0.3 ? '(tendência fraca — o volume oscila mais do que cresce ou cai)' : reg.r2 < 0.6 ? '(tendência moderada)' : '(tendência forte)'}.` },
-    { ico: '🔮', txt: `Projeção para o mês ${completos.length < linhas.length ? 'atual' : 'seguinte'}: <b>~${proj} cadastros</b>${completos.length < linhas.length ? ` (até agora: ${linhas[linhas.length - 1].cad})` : ''}. É uma referência, não uma meta — feriados e campanhas mudam o número.` },
+    { ico: '📈', txt: `Tendência dos cadastros: <b>${reg.b >= 0 ? 'sobe' : 'cai'} cerca de ${fmtNum(Math.abs(reg.b))} propostas por mês</b> (linha reta que melhor acompanha os meses completos). ${reg.r2 < 0.3 ? 'Confiança <b>baixa</b>: os meses sobem e descem muito, a linha explica pouco.' : reg.r2 < 0.6 ? 'Confiança <b>média</b>: a linha acompanha razoavelmente os meses.' : 'Confiança <b>alta</b>: os meses seguem bem a linha.'} (a linha explica ${fmtPct(reg.r2, 0)} da variação entre os meses)` },
+    { ico: '🔮', txt: `Projeção para o mês ${completos.length < linhas.length ? 'atual' : 'seguinte'}: <b>cerca de ${proj} cadastros</b>${completos.length < linhas.length ? ` (até agora: ${linhas[linhas.length - 1].cad})` : ''}. É uma estimativa seguindo a tendência, não uma meta — feriados e campanhas mudam o número.` },
   ]
   const maturos = linhas.filter(l => l.maturidade !== null && l.maturidade < 0.7 && l.cad >= 5)
-  if (maturos.length) notas.push({ ico: '⚠️', txt: `Safras ainda imaturas (menos de 70% decididas): ${maturos.map(l => rotMes(l.m)).join(', ')}. A conversão delas ainda vai mudar.` })
+  if (maturos.length) notas.push({ ico: '⚠️', txt: `Meses em que menos de 70% das propostas já foram decididas: ${maturos.map(l => rotMes(l.m)).join(', ')}. A taxa de aprovação desses meses ainda vai mudar.` })
   // Semanal
   const sem = semanas(12)
   const series = sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: sem.map(w => filtrar(s, { semPeriodo: true }).filter(r => r.cad && r.cad >= w.ini && r.cad <= w.fim).length) }))
   const totS = sem.map((_, i) => soma(series.map(x => x.valores[i])))
   const regS = regressao(totS.slice(0, -1))
   return { titulo: 'Evolução mensal e semanal', blocos: [
-    { tipo: 'grafico', titulo: 'Cadastros por mês', sub: 'Barras = cadastros · linha tracejada = média móvel de 3 meses.',
+    { tipo: 'grafico', titulo: 'Cadastros por mês', sub: 'Barras = propostas cadastradas no mês · linha tracejada = média dos 3 meses anteriores (suaviza as oscilações).',
       svg: gBarras({ categorias: meses.map(rotMes), series: sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: meses.map(m => filtrar(s).filter(r => r.cad && r.cad.slice(0, 7) === m).length) })), tendencia: { valores: mm.map(v => v === null ? null : v / (sists.length === 2 ? 1 : 1)), cor: '#0f172a' }, destacarUltima: completos.length < linhas.length }),
-      legenda: [...sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })), { cor: '#0f172a', rot: 'média móvel 3 meses (total)', tracejado: true }] },
-    tabela, { tipo: 'notas', titulo: 'Leitura estatística', itens: notas },
-    { tipo: 'grafico', titulo: 'Cadastros por semana (12 semanas)', quebra: true, sub: `Tendência semanal: ${regS.b >= 0 ? '+' : ''}${fmtNum(regS.b)} por semana · previsão desta semana: ${Math.round(regS.prever(totS.length - 1))}. Ignora o período do filtro.`,
+      legenda: [...sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })), { cor: '#0f172a', rot: 'média dos últimos 3 meses', tracejado: true }] },
+    tabela, { tipo: 'notas', titulo: 'O que os números mostram', itens: notas },
+    { tipo: 'grafico', titulo: 'Cadastros por semana (12 semanas)', quebra: true, sub: `Tendência: ${regS.b >= 0 ? 'sobe' : 'cai'} ~${fmtNum(Math.abs(regS.b))} propostas por semana · previsão para esta semana: ${Math.round(regS.prever(totS.length - 1))}. Este gráfico não usa o filtro de período.`,
       svg: gBarras({ categorias: sem.map(w => w.rot), series, tendencia: { valores: sem.map((_, i) => regS.prever(i)), cor: '#0f172a' }, destacarUltima: true }),
       legenda: [...series.map(s => ({ cor: s.cor, rot: s.nome })), { cor: '#0f172a', rot: 'tendência', tracejado: true }] },
   ]}
@@ -1091,10 +1200,10 @@ function relGargalos() {
   })
   linhas.sort((a, b) => b.med * b.n - a.med * a.n)
   const tEtapas = { tipo: 'tabela', titulo: 'Tempo parado por etapa (propostas em andamento)', aba: 'Gargalos por etapa',
-    sub: 'Dias desde que a proposta entrou na etapa atual. Mediana = metade das propostas está acima disso. P90 = 10% estão acima disso. Ordenado pelo "peso" do gargalo (mediana × quantidade).',
+    sub: 'Dias desde que a proposta entrou na etapa em que está. Tempo típico = metade das propostas está parada há menos que isso e metade há mais. Ordenado pelo tamanho do gargalo: quantidade de propostas × tempo típico.',
     colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Etapa', tipo: 'txt' }, { rot: 'Fase', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' },
-      { rot: 'Mediana', tipo: 'dias' }, { rot: 'Média', tipo: 'dias' }, { rot: 'P90', tipo: 'dias' }, { rot: 'Máximo', tipo: 'dias' },
-      { rot: `+${DIAS_PARADA} dias`, tipo: 'int' }, { rot: 'Valor parado', tipo: 'brl' }],
+      { rot: 'Tempo típico parada', tipo: 'dias' }, { rot: 'Média parada', tipo: 'dias' }, { rot: '10% mais lentas passam de', tipo: 'dias' }, { rot: 'Mais tempo parada', tipo: 'dias' },
+      { rot: 'Paradas há +30 dias', tipo: 'int' }, { rot: 'Valor parado', tipo: 'brl' }],
     linhas: linhas.map(l => [SIS[l.s].curto, l.etapa, l.fase, l.n, l.med, l.media, l.p90, l.max, l.mais30, l.valor]) }
   // por pessoa
   const pess = []
@@ -1105,20 +1214,20 @@ function relGargalos() {
   })
   pess.sort((a, b) => b[4] - a[4])
   const tPess = { tipo: 'tabela', titulo: 'Paradas por responsável', aba: 'Paradas por pessoa', sub: sists.includes('fgf') ? 'No Giro Fácil conta o analista.' : '',
-    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Mediana parada', tipo: 'dias' }, { rot: `+${DIAS_PARADA} dias`, tipo: 'int' }, { rot: '% paradas', tipo: 'pct' }],
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Tempo típico parada', tipo: 'dias' }, { rot: 'Paradas há +30 dias', tipo: 'int' }, { rot: '% paradas', tipo: 'pct' }],
     linhas: pess }
   const top = sists.flatMap(s => filtrar(s).filter(r => !r.final && r.diasParado !== null)).sort((a, b) => b.diasParado - a.diasParado).slice(0, 25)
   const tTop = { tipo: 'tabela', titulo: 'As 25 propostas paradas há mais tempo', aba: 'Mais paradas',
     colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Código', tipo: 'txt' }, { rot: 'Cliente', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, { rot: 'Etapa', tipo: 'txt' }, { rot: 'Na etapa desde', tipo: 'txt' }, { rot: 'Dias parada', tipo: 'int' }, { rot: 'Valor', tipo: 'brl' }],
     linhas: top.map(r => [SIS[r.sis].curto, r.codigo, r.cliente || '—', r.resp, etapaLimpa(r.etapa), fmtData(r.nae), r.diasParado, r.valor]) }
   const notas = []
-  if (linhas[0]) notas.push({ ico: '🚧', txt: `Maior gargalo: <b>${linhas[0].etapa}</b> (${SIS[linhas[0].s].curto}) — ${linhas[0].n} propostas, mediana de ${fmtDias(linhas[0].med)} parada${linhas[0].mais30 ? `, ${linhas[0].mais30} há mais de ${DIAS_PARADA} dias` : ''}.` })
+  if (linhas[0]) notas.push({ ico: '🚧', txt: `Maior gargalo: <b>${linhas[0].etapa}</b> (${SIS[linhas[0].s].curto}) — ${linhas[0].n} propostas, tempo típico de ${fmtDias(linhas[0].med)} parada${linhas[0].mais30 ? `, ${linhas[0].mais30} há mais de ${DIAS_PARADA} dias` : ''}.` })
   const assim = linhas.filter(l => l.n >= 5 && l.media > l.med * 1.6)
-  if (assim.length) notas.push({ ico: '📊', txt: `Em ${assim.map(l => `<b>${l.etapa}</b>`).join(', ')} a média é bem maior que a mediana: a maioria anda, mas algumas poucas estão travadas há muito tempo e puxam a média. Vale olhar caso a caso.` })
+  if (assim.length) notas.push({ ico: '📊', txt: `Em ${assim.map(l => `<b>${l.etapa}</b>`).join(', ')} a média é bem maior que o tempo típico: a maioria anda, mas algumas poucas estão travadas há muito tempo e puxam a média para cima. Vale olhar essas caso a caso.` })
   if (!notas.length) notas.push({ ico: '✅', txt: 'Nenhum gargalo relevante nos filtros atuais.' })
   return { titulo: 'Gargalos e tempo por etapa', blocos: [
-    { tipo: 'grafico', titulo: 'Mediana de dias parada por etapa', svg: gBarrasH({ itens: [...linhas].sort((a, b) => b.med - a.med).slice(0, 14).map(l => ({ rot: `${l.etapa} · ${SIS[l.s].curto}`, val: l.med, cor: corSis(l.s), extra: `${l.n} prop.` })), formato: v => fmtDias(v), larguraRot: 330 }), legenda: sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })) },
-    { tipo: 'notas', titulo: 'Leitura', itens: notas }, tEtapas, { ...tPess, quebra: true }, tTop,
+    { tipo: 'grafico', titulo: 'Tempo típico parada em cada etapa', svg: gBarrasH({ itens: [...linhas].sort((a, b) => b.med - a.med).slice(0, 14).map(l => ({ rot: `${l.etapa} · ${SIS[l.s].curto}`, val: l.med, cor: corSis(l.s), extra: `${l.n} prop.` })), formato: v => fmtDias(v), larguraRot: 330 }), legenda: sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })) },
+    { tipo: 'notas', titulo: 'O que os números mostram', itens: notas }, tEtapas, { ...tPess, quebra: true }, tTop,
   ]}
 }
 
@@ -1136,9 +1245,9 @@ function relEstatistico() {
     const r = resumo(l)
     linhasFx.push([SIS[s].curto, rot, r.total, r.decididas, r.convQtd, r.ic, r.leadMediana])
   }))
-  blocos.push({ tipo: 'tabela', titulo: 'Conversão por faixa de valor pedido', aba: 'Faixas de valor',
-    sub: 'Mostra se pedidos maiores são mais ou menos aprovados. Faixas com IC muito largo têm poucas propostas: não tire conclusão delas.',
-    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Faixa', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Conversão', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Cadastro→concessão', tipo: 'dias' }],
+  blocos.push({ tipo: 'tabela', titulo: 'Aprovação por faixa de valor pedido', aba: 'Faixas de valor',
+    sub: 'Mostra se pedidos de valor maior são mais ou menos aprovados. Aprovação = concedidas ÷ decididas, dentro de cada faixa. Faixas com margem de erro grande têm poucas propostas: não tire conclusão delas.',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Faixa', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Aprovação', tipo: 'pct' }, { rot: 'Margem de erro', tipo: 'ic' }, { rot: 'Tempo até a concessão', tipo: 'dias' }],
     linhas: linhasFx })
   // Por linha
   const linhasL = []
@@ -1149,13 +1258,13 @@ function relEstatistico() {
   })
   linhasL.sort((a, b) => b[2] - a[2])
   blocos.push({ tipo: 'tabela', titulo: 'Desempenho por linha de crédito', aba: 'Por linha',
-    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Linha', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Conversão', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Ticket médio', tipo: 'brl' }, { rot: 'Cadastro→concessão', tipo: 'dias' }],
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Linha', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Aprovação', tipo: 'pct' }, { rot: 'Margem de erro', tipo: 'ic' }, { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Valor médio concedido', tipo: 'brl' }, { rot: 'Tempo até a concessão', tipo: 'dias' }],
     linhas: linhasL })
   // Distribuição do tempo até a concessão
   const leads = todos.filter(r => r.final === 'conc' && r.leadTime !== null).map(r => r.leadTime)
   const hist = [[0, 7, 'até 7 dias'], [8, 15, '8 a 15'], [16, 30, '16 a 30'], [31, 60, '31 a 60'], [61, 90, '61 a 90'], [91, 180, '91 a 180'], [181, 99999, 'mais de 180']]
   blocos.push({ tipo: 'grafico', titulo: 'Quanto tempo leva do cadastro à concessão', quebra: true,
-    sub: leads.length ? `${leads.length} concedidas · mediana ${fmtDias(mediana(leads))} · metade fica entre ${fmtDias(quantil(leads, .25))} e ${fmtDias(quantil(leads, .75))} · 90% saem em até ${fmtDias(quantil(leads, .9))}.` : 'Sem concedidas no período.',
+    sub: leads.length ? `${leads.length} concedidas · tempo típico ${fmtDias(mediana(leads))} · a maioria (metade do meio) leva entre ${fmtDias(quantil(leads, .25))} e ${fmtDias(quantil(leads, .75))} · 9 em cada 10 saem em até ${fmtDias(quantil(leads, .9))}.` : 'Sem concedidas no período.',
     svg: gBarrasH({ itens: hist.map(([a, b, rot]) => { const n = leads.filter(x => x >= a && x <= b).length; return { rot, val: n, cor: '#003366', extra: leads.length ? fmtPct(n / leads.length, 0) : '' } }) }) })
   // Dia da semana dos cadastros
   const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -1171,7 +1280,7 @@ function relEstatistico() {
   const linhasM = ordem.slice(0, 20).map(([m, x]) => { acum += x.v; return [m, x.n, x.v, totV ? x.v / totV : null, totV ? acum / totV : null] })
   const n80 = (() => { let a = 0; for (let i = 0; i < ordem.length; i++) { a += ordem[i][1].v; if (a >= 0.8 * totV) return i + 1 } return ordem.length })()
   blocos.push({ tipo: 'tabela', titulo: 'Onde o crédito concedido se concentra (municípios)', aba: 'Municípios', quebra: true,
-    sub: ordem.length ? `${ordem.length} municípios receberam crédito; <b>${n80}</b> deles (${fmtPct(n80 / ordem.length, 0)}) concentram 80% do valor concedido.` : '',
+    sub: ordem.length ? `${ordem.length} municípios receberam crédito. Só <b>${n80}</b> deles (${fmtPct(n80 / ordem.length, 0)} dos municípios) somam 80% de todo o valor concedido. % do valor = valor concedido no município ÷ valor concedido total.` : '',
     colunas: [{ rot: 'Município', tipo: 'txt' }, { rot: 'Concedidas', tipo: 'int' }, { rot: 'Valor concedido', tipo: 'brl' }, { rot: '% do valor', tipo: 'pct' }, { rot: '% acumulado', tipo: 'pct' }],
     linhas: linhasM })
   // Coortes de maturação
@@ -1183,21 +1292,21 @@ function relEstatistico() {
     const dec = l.filter(r => r.final), conc = l.filter(r => r.final === 'conc')
     linhasC.push([SIS[s].curto, rotMes(m), l.length, dec.length / l.length, conc.length / l.length, dec.length ? conc.length / dec.length : null, mediana(conc.map(r => r.leadTime).filter(v => v !== null)), l.filter(r => !r.final).length])
   }))
-  blocos.push({ tipo: 'tabela', titulo: 'Safras (coortes) por mês de cadastro', aba: 'Safras',
-    sub: 'Acompanha cada grupo de propostas cadastradas no mesmo mês: quanto já foi decidido e quanto virou concessão. Safras recentes ainda estão abertas.',
-    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Safra', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: '% decididas', tipo: 'pct' }, { rot: '% concedidas (do total)', tipo: 'pct' }, { rot: 'Conversão (das decididas)', tipo: 'pct' }, { rot: 'Cadastro→concessão', tipo: 'dias' }, { rot: 'Ainda em andamento', tipo: 'int' }],
+  blocos.push({ tipo: 'tabela', titulo: 'Safras: o que aconteceu com as cadastradas em cada mês', aba: 'Safras',
+    sub: 'Cada linha é o grupo de propostas cadastradas naquele mês. % já decidida = decididas ÷ cadastradas. % concedida = concedidas ÷ cadastradas. Aprovação = concedidas ÷ decididas. Os meses recentes ainda estão em andamento.',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Safra', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: '% já decidida', tipo: 'pct' }, { rot: '% concedida', tipo: 'pct' }, { rot: 'Aprovação', tipo: 'pct' }, { rot: 'Tempo até a concessão', tipo: 'dias' }, { rot: 'Ainda em andamento', tipo: 'int' }],
     linhas: linhasC })
   // Notas
   const notas = []
   const fxConf = linhasFx.filter(l => l[3] >= 15)
   if (fxConf.length >= 2) {
     const mx = fxConf.reduce((a, b) => (b[4] > a[4] ? b : a)), mn = fxConf.reduce((a, b) => (b[4] < a[4] ? b : a))
-    notas.push({ ico: '💡', txt: `Faixa com maior conversão: <b>${mx[1]}</b> (${mx[0]}, ${fmtPct(mx[4])}); menor: <b>${mn[1]}</b> (${mn[0]}, ${fmtPct(mn[4])}).` })
+    notas.push({ ico: '💡', txt: `Faixa de valor com maior aprovação: <b>${mx[1]}</b> (${mx[0]}, ${fmtPct(mx[4])}); menor: <b>${mn[1]}</b> (${mn[0]}, ${fmtPct(mn[4])}).` })
   }
   if (soma(contDia)) { const fds = (contDia[0] + contDia[6]) / soma(contDia); notas.push({ ico: '📅', txt: `${fmtPct(fds, 0)} dos cadastros caem no fim de semana — por isso a comparação semanal é mais estável que a diária.` }) }
   if (ordem.length) notas.push({ ico: '🗺️', txt: `Concentração geográfica: os 3 maiores municípios somam ${fmtPct(soma(ordem.slice(0, 3).map(x => x[1].v)) / (totV || 1), 0)} do valor concedido.` })
   blocos.unshift({ tipo: 'notas', titulo: 'Principais achados', itens: notas.length ? notas : [{ ico: '•', txt: 'Poucos dados no período para tirar conclusões.' }] })
-  return { titulo: 'Análises estatísticas', blocos }
+  return { titulo: 'Análises detalhadas', blocos }
 }
 
 // ── 6. CARTEIRA ATUAL (pessoa × fase) ──
@@ -1212,18 +1321,18 @@ function relCarteira() {
   })
   return { titulo: 'Carteira atual em andamento', sub: 'Todas as propostas em andamento hoje (ignora o período do filtro).', blocos: [
     { tipo: 'tabela', titulo: 'Propostas em andamento por pessoa e fase', aba: 'Carteira', sub: 'No Giro Fácil conta o analista. Ignora o período do filtro: é a foto de hoje.',
-      colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, ...FASES.map(f => ({ rot: f, tipo: 'int' })), { rot: 'Total', tipo: 'int' }, { rot: 'Valor', tipo: 'brl' }, { rot: `+${DIAS_PARADA}d`, tipo: 'int' }],
+      colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, ...FASES.map(f => ({ rot: f, tipo: 'int' })), { rot: 'Total', tipo: 'int' }, { rot: 'Valor', tipo: 'brl' }, { rot: 'Paradas há +30 dias', tipo: 'int' }],
       linhas,
       total: ['', 'Total', ...FASES.map((_, i) => soma(linhas.map(l => l[2 + i]))), soma(linhas.map(l => l[2 + FASES.length])), soma(linhas.map(l => l[3 + FASES.length])), soma(linhas.map(l => l[4 + FASES.length]))] },
   ]}
 }
 
 const RELATORIOS = [
-  { id: 'producao', nome: 'Produção por colaborador', desc: 'Volume, conversão com margem de erro, valor, prazo e paradas por pessoa', fn: relProducao },
-  { id: 'comparativo', nome: 'Microcrédito × Giro Fácil', desc: 'Indicadores lado a lado, teste estatístico e evolução mensal', fn: relComparativo },
-  { id: 'evolucao', nome: 'Evolução mensal e semanal', desc: 'Séries no tempo, média móvel, tendência e projeção', fn: relEvolucao },
+  { id: 'producao', nome: 'Produção por colaborador', desc: 'Quantas propostas cada pessoa tem, quantas aprovou, valor, prazo e paradas', fn: relProducao },
+  { id: 'comparativo', nome: 'Microcrédito × Giro Fácil', desc: 'Os dois sistemas lado a lado e se a diferença é real ou coincidência', fn: relComparativo },
+  { id: 'evolucao', nome: 'Evolução mensal e semanal', desc: 'Mês a mês e semana a semana, com tendência e previsão', fn: relEvolucao },
   { id: 'gargalos', nome: 'Gargalos e tempo por etapa', desc: 'Onde as propostas param, por quanto tempo e com quem', fn: relGargalos },
-  { id: 'estatistico', nome: 'Análises estatísticas', desc: 'Faixas de valor, linhas, prazos, dia da semana, municípios e safras', fn: relEstatistico },
+  { id: 'estatistico', nome: 'Análises detalhadas', desc: 'Aprovação por faixa de valor e linha, prazos, dia da semana, municípios e safras', fn: relEstatistico },
   { id: 'carteira', nome: 'Carteira atual', desc: 'Foto de hoje: em andamento por pessoa e fase', fn: relCarteira },
 ]
 
@@ -1286,7 +1395,7 @@ async function atribuir(sis, mapa, campo) {   // mapa: { codigo: novoNome }
     await patchEmLotes(SIS[sis].tabela, cods, corpo)
   }
   await atualizarReferencia(sis, mapa, campo)
-  DADOS[sis].forEach(r => { if (mapa[r.codigo] !== undefined) { if (campo === 'estag') r.estag = mapa[r.codigo]; else r.resp = mapa[r.codigo] } })
+  DADOS[sis].forEach(r => { if (mapa[r.codigo] !== undefined) { if (campo === 'estag') r.estagBruto = mapa[r.codigo]; else r.respBruto = mapa[r.codigo]; aplicarAtivo(r) } })
 }
 // A planilha de referência do último processamento também é atualizada, para que
 // o próximo processamento não devolva o nome antigo a uma proposta.
@@ -1332,7 +1441,7 @@ let CAD_SIS = 'micro'
 const PAPEIS = { responsavel: 'Responsável', analista: 'Analista', estagiario: 'Estagiário' }
 const campoDoPapel = papel => papel === 'estagiario' ? 'estag' : 'resp'
 function propostasDaPessoa(sis, nome, papel) {
-  const campo = campoDoPapel(papel)
+  const campo = campoDoPapel(papel) === 'estag' ? 'estagBruto' : 'respBruto'
   return DADOS[sis].filter(r => r[campo] === nome)
 }
 function seletorSistema(varNome, fn) {
@@ -1344,24 +1453,24 @@ function avisoConfig() {
 }
 function renderColabs() {
   const sis = CAD_SIS
-  const lista = CFG.colabs.filter(c => c.sistema === sis)
-  const ord = { true: 0, false: 1 }
-  lista.sort((a, b) => ord[a.ativo] - ord[b.ativo] || a.papel.localeCompare(b.papel) || a.ordem - b.ordem || a.nome.localeCompare(b.nome))
+  const lista = CFG.colabs.filter(c => c.sistema === sis && c.ativo)
+    .sort((a, b) => a.papel.localeCompare(b.papel) || a.ordem - b.ordem || a.nome.localeCompare(b.nome))
+  const inativos = CFG.colabs.filter(c => c.sistema === sis && !c.ativo).sort((a, b) => a.nome.localeCompare(b.nome))
   document.getElementById('conteudo').innerHTML = `<div class="card">
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
       <div class="card-titulo" style="margin:0">👥 Colaboradores</div>${seletorSistema('CAD_SIS', 'renderColabs')}
       <button class="btn btn-pri" style="margin-left:auto" onclick="modalNovoColab()" ${CFG.ok ? '' : 'disabled'}>+ Adicionar colaborador</button>
     </div>
-    <div class="card-sub">Quem está <b>ativo</b> aparece nos botões e listas de atribuição do ${SIS[sis].nome}. Quem sai fica <b>inativo</b>: o nome continua nas propostas antigas (histórico), e você escolhe o destino das que estão em andamento.</div>
+    <div class="card-sub">Esta é a equipe do ${SIS[sis].nome}: são exatamente esses nomes que aparecem no sistema, no painel e nos relatórios. Quem é removido da equipe <b>some de todos os lugares</b> — as propostas dele passam a aparecer como N/A (sem responsável), a não ser que você escolha outra pessoa para recebê-las.</div>
     ${avisoConfig()}
-    <div class="tab-wrap"><table class="t"><thead><tr><th>Cor</th><th>Nome</th><th>Papel</th><th>Situação</th><th class="n">Em andamento</th><th class="n">Paradas +${DIAS_PARADA}d</th><th class="n">Total de propostas</th><th></th></tr></thead><tbody>
+    <div class="tab-wrap"><table class="t"><thead><tr><th>Cor</th><th>Nome</th><th>Papel${ajudaDe('Papel')}</th><th>Situação${ajuda('Ativo = faz parte da equipe e aparece no sistema. Quem é removido some de todas as telas.')}</th><th class="n">Em andamento${ajudaDe('Em andamento')}</th><th class="n">Paradas há +30 dias${ajudaDe('Paradas há +30 dias')}</th><th class="n">Total de propostas${ajuda('Todas as propostas com o nome dessa pessoa: em andamento e finalizadas, desde 2025.')}</th><th></th></tr></thead><tbody>
     ${lista.map(c => {
       const ps = propostasDaPessoa(sis, c.nome, c.papel)
       const at = ps.filter(r => !r.final)
       return `<tr>
         <td><span class="bolinha" style="background:${esc(c.cor)};width:16px;height:16px"></span></td>
         <td><b>${esc(c.nome)}</b></td><td>${PAPEIS[c.papel] || c.papel}</td>
-        <td>${c.ativo ? '<span class="tag tag-ok">Ativo</span>' : '<span class="tag tag-off">Inativo</span>'}</td>
+        <td><span class="tag tag-ok">Ativo</span></td>
         <td class="n">${fmtInt(at.length)}</td><td class="n">${fmtInt(at.filter(r => r.diasParado > DIAS_PARADA).length)}</td><td class="n">${fmtInt(ps.length)}</td>
         <td style="text-align:right;white-space:nowrap">
           <button class="btn btn-sm" onclick="modalEditarColab(${c.id})">Editar</button>
@@ -1371,17 +1480,20 @@ function renderColabs() {
         </td></tr>`
     }).join('') || `<tr><td colspan="8" class="vazio">Nenhum colaborador cadastrado.</td></tr>`}
     </tbody></table></div>
-    ${semCadastro(sis)}
+    ${inativos.length || semCadastro(sis) ? `<details style="margin-top:16px"><summary style="cursor:pointer;font-size:12.5px;color:var(--suave)">Ex-colaboradores (${inativos.length}) — só para reativar</summary>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">${inativos.map(c => `<span class="tag tag-off" style="display:inline-flex;gap:8px;align-items:center;padding:4px 10px">${esc(c.nome)} · ${PAPEIS[c.papel]} <button class="btn btn-sm" onclick="reativarColab(${c.id})">Reativar</button></span>`).join('') || '<span class="card-sub">Nenhum.</span>'}</div>
+      ${semCadastro(sis)}
+    </details>` : ''}
   </div>`
 }
 // Nomes que aparecem nas propostas mas não estão cadastrados
 function semCadastro(sis) {
   const conhecidos = new Set(CFG.colabs.filter(c => c.sistema === sis).map(c => c.nome))
   const nomes = {}
-  DADOS[sis].forEach(r => [r.resp, r.estag].filter(Boolean).forEach(n => { if (n !== 'N/A' && !conhecidos.has(n)) nomes[n] = (nomes[n] || 0) + 1 }))
+  DADOS[sis].forEach(r => [r.respBruto, r.estagBruto].filter(Boolean).forEach(n => { if (n !== 'N/A' && !conhecidos.has(n)) nomes[n] = (nomes[n] || 0) + 1 }))
   const l = Object.entries(nomes)
   if (!l.length || !CFG.ok) return ''
-  return `<div class="alerta alerta-aviso" style="margin-top:14px">Nomes nas propostas que não estão no cadastro: ${l.map(([n, q]) => `<b>${esc(n)}</b> (${q})`).join(', ')}. Cadastre como inativo para manter o histórico organizado, ou redistribua as propostas.</div>`
+  return `<div class="alerta alerta-aviso" style="margin-top:14px">Nomes gravados em propostas que não estão na equipe (aparecem como N/A no sistema): ${l.map(([n, q]) => `<b>${esc(n)}</b> (${q})`).join(', ')}. Elas podem ser atribuídas na aba Redistribuir, filtrando por N/A.</div>`
 }
 function corLivre(sis) {
   const usadas = new Set(CFG.colabs.filter(c => c.sistema === sis).map(c => c.cor.toUpperCase()))
@@ -1417,7 +1529,7 @@ async function salvarNovoColab() {
 }
 function modalEditarColab(id) {
   const c = CFG.colabs.find(x => x.id === id); if (!c) return
-  const n = DADOS[c.sistema].filter(r => r[campoDoPapel(c.papel)] === c.nome).length
+  const n = propostasDaPessoa(c.sistema, c.nome, c.papel).length
   abrirModal(`<h3>Editar ${esc(c.nome)}</h3><div class="m-sub">${SIS[c.sistema].nome} · ${n} proposta(s) com esse nome</div>
     <div class="linha-form">
       <div style="flex:1;min-width:200px"><label class="rot">Nome</label><input type="text" id="ec-nome" style="width:100%" value="${esc(c.nome)}"></div>
@@ -1439,7 +1551,7 @@ async function salvarEdicaoColab(id) {
     await api(`config_colaboradores?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { nome, papel, cor, ordem } })
     if (nome !== c.nome) {
       const campo = campoDoPapel(c.papel)
-      const cods = DADOS[c.sistema].filter(r => r[campo] === c.nome).map(r => r.codigo)
+      const cods = propostasDaPessoa(c.sistema, c.nome, c.papel).map(r => r.codigo)
       if (cods.length) await atribuir(c.sistema, Object.fromEntries(cods.map(x => [x, nome])), campo)
     }
     await registrarLog(c.sistema, 'Colaborador editado', { de: c.nome, para: nome, papel, cor })
@@ -1471,9 +1583,8 @@ function modalDesativarColab(id) {
     ${opcaoDestino('dividir', 'Dividir igualmente entre a equipe', 'Distribui em rodízio entre as pessoas marcadas.',
       `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px">${colegas.map(x => `<label class="ms-opcao" style="padding:0"><input type="checkbox" class="dc-div" value="${esc(x.nome)}" checked> ${esc(x.nome)}</label>`).join('')}</div>`)}
     ${opcaoDestino('na', 'Deixar sem ' + papelTxt + ' (N/A)', 'Elas aparecem em "Novas" no sistema para alguém assumir.', '', !colegas.length)}
-    ${opcaoDestino('manual', 'Escolher uma por uma', 'Depois de remover, abre a tela de redistribuição só com as propostas dele.')}
-    ${opcaoDestino('manter', 'Não mexer', 'As propostas continuam com o nome dele (não recomendado).')}
-    <label class="ms-opcao" style="margin-top:6px"><input type="checkbox" id="dc-finalizadas"> Também mover as ${fin.length} finalizadas (normalmente não: elas contam a produção dele no histórico)</label>
+    ${opcaoDestino('manual', 'Escolher uma por uma', 'Elas vão para N/A e já abre a tela de redistribuição para você escolher quem fica com cada uma.')}
+    <label class="ms-opcao" style="margin-top:6px"><input type="checkbox" id="dc-finalizadas"> Também passar as ${fin.length} finalizadas para quem recebe (se não marcar, elas ficam como N/A nos relatórios)</label>
     <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-perigo" id="dc-ok" onclick="confirmarDesativar(${id})">Remover e aplicar</button></div>`)
 }
 async function confirmarDesativar(id) {
@@ -1486,7 +1597,7 @@ async function confirmarDesativar(id) {
   let mapa = null
   if (destino === 'transferir') { const p = document.getElementById('dc-para').value; if (!p) { toast('Não há colega ativo para receber.', true); return } mapa = Object.fromEntries(cods.map(x => [x, p])) }
   if (destino === 'dividir') { const ps = [...document.querySelectorAll('.dc-div:checked')].map(i => i.value); if (!ps.length) { toast('Marque ao menos uma pessoa.', true); return } mapa = distribuirIgual(cods, ps) }
-  if (destino === 'na') mapa = Object.fromEntries(cods.map(x => [x, 'N/A']))
+  if (destino === 'na' || destino === 'manual') mapa = Object.fromEntries(cods.map(x => [x, 'N/A']))
   const btn = document.getElementById('dc-ok'); btn.disabled = true; btn.textContent = 'Aplicando...'
   try {
     if (mapa && cods.length) await atribuir(c.sistema, mapa, campo)
@@ -1494,7 +1605,7 @@ async function confirmarDesativar(id) {
     await registrarLog(c.sistema, 'Colaborador removido da equipe', { nome: c.nome, destino, propostas: cods.length, incluiu_finalizadas: incluirFin, resumo: mapa ? contarPor(Object.values(mapa)) : null })
     await carregarConfig(); fecharModal()
     toast(`✓ ${c.nome} removido${mapa ? ` · ${cods.length} proposta(s) redistribuída(s)` : ''}`)
-    if (destino === 'manual') { RED.sis = c.sistema; RED.pessoa = c.nome; RED.campo = campo; irPara('redistribuir') } else renderColabs()
+    if (destino === 'manual') { RED.sis = c.sistema; RED.pessoa = 'N/A'; RED.campo = campo; RED.situacao = 'ativas'; irPara('redistribuir') } else renderColabs()
   } catch(e) { toast('Erro: ' + e.message, true); btn.disabled = false; btn.textContent = 'Remover e aplicar' }
 }
 const contarPor = arr => arr.reduce((o, v) => (o[v] = (o[v] || 0) + 1, o), {})
@@ -1514,7 +1625,7 @@ function renderLinhas() {
     </div>
     <div class="card-sub">O sistema reconhece a linha pelo texto da planilha: as <b>palavras</b> precisam aparecer todas (sem acento). As regras são testadas na ordem da <b>prioridade</b> — por isso "Micro Rural Mulher" vem antes de "Micro Mulher". Linha <b>inativa</b>: propostas novas dela não entram mais no ${SIS[sis].nome}.</div>
     ${avisoConfig()}
-    <div class="tab-wrap"><table class="t"><thead><tr><th>Prior.</th><th>Cor</th><th>Linha</th><th>Palavras na planilha</th><th>Situação</th><th class="n">Em andamento</th><th class="n">Total</th><th></th></tr></thead><tbody>
+    <div class="tab-wrap"><table class="t"><thead><tr><th>Prioridade${ajuda('Ordem em que as regras são testadas: a de número menor é testada primeiro. Por isso as linhas com nome composto (ex: Micro Rural Mulher) vêm antes das simples (ex: Micro Mulher).')}</th><th>Cor</th><th>Linha</th><th>Palavras na planilha${ajuda('A proposta é reconhecida como desta linha quando o texto da coluna Linha de Crédito da planilha tem TODAS estas palavras (sem acento, maiúsculo ou minúsculo tanto faz).')}</th><th>Situação${ajuda('Ativa = propostas novas dessa linha entram no sistema. Inativa = deixam de entrar.')}</th><th class="n">Em andamento</th><th class="n">Total</th><th></th></tr></thead><tbody>
     ${regras.map(l => `<tr>
       <td class="mono">${l.prioridade}</td><td><span class="bolinha" style="background:${esc(l.cor)};width:16px;height:16px"></span></td>
       <td><b>${esc(l.nome)}</b></td><td class="mono" style="font-size:12px">${esc(l.palavras)}</td>
@@ -1644,7 +1755,7 @@ function listaRedistribuir() {
 function renderRedistribuir() {
   if (RED.sis === 'micro') RED.campo = 'resp'
   const lista = listaRedistribuir()
-  const nomesNaBase = [...new Set(DADOS[RED.sis].map(r => RED.campo === 'estag' ? r.estag : r.resp))].sort((a, b) => a === 'N/A' ? -1 : b === 'N/A' ? 1 : a.localeCompare(b, 'pt-BR'))
+  const nomesNaBase = ['N/A', ...pessoasAtivas(RED.sis, RED.campo)]
   const ativos = pessoasAtivas(RED.sis, RED.campo)
   const papelTxt = RED.sis === 'micro' ? 'responsável' : RED.campo === 'estag' ? 'estagiário' : 'analista'
   RED.sel = new Set([...RED.sel].filter(c => lista.find(r => r.codigo === c)))
@@ -1656,7 +1767,7 @@ function renderRedistribuir() {
     </div>
     <div class="card-sub">Filtre, marque as propostas e escolha para quem vão. A mudança vale na hora para o ${SIS[RED.sis].nome}.</div>
     <div class="linha-form" style="margin-bottom:12px">
-      <div><label class="rot">${papelTxt[0].toUpperCase() + papelTxt.slice(1)} atual</label><select onchange="RED.pessoa=this.value; RED.sel.clear(); renderRedistribuir()"><option value="">Todos</option>${nomesNaBase.map(n => `<option ${RED.pessoa === n ? 'selected' : ''} value="${esc(n)}">${esc(n)}${n !== 'N/A' && !ativos.includes(n) ? ' (inativo)' : ''}</option>`).join('')}</select></div>
+      <div><label class="rot">${papelTxt[0].toUpperCase() + papelTxt.slice(1)} atual</label><select onchange="RED.pessoa=this.value; RED.sel.clear(); renderRedistribuir()"><option value="">Todos</option>${nomesNaBase.map(n => `<option ${RED.pessoa === n ? 'selected' : ''} value="${esc(n)}">${esc(n)}</option>`).join('')}</select></div>
       <div><label class="rot">Situação</label><select onchange="RED.situacao=this.value; renderRedistribuir()"><option value="ativas" ${RED.situacao === 'ativas' ? 'selected' : ''}>Em andamento</option><option value="todas" ${RED.situacao === 'todas' ? 'selected' : ''}>Todas</option></select></div>
       <div><label class="rot">Fase</label><select onchange="RED.fase=this.value; renderRedistribuir()"><option value="">Todas</option>${FASES.map(f => `<option ${RED.fase === f ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
       <div><label class="rot">Linha</label><select onchange="RED.linha=this.value; renderRedistribuir()"><option value="">Todas</option>${[...new Set(DADOS[RED.sis].map(r => r.linha))].sort().map(l => `<option ${RED.linha === l ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
@@ -1727,6 +1838,24 @@ async function iniciarApp() {
     document.getElementById('conteudo').innerHTML = `<div class="alerta alerta-erro">Erro ao carregar os dados: ${esc(e.message)}</div>`
   }
 }
+// Dica do "?" — fica por cima de tudo e não é cortada pelas tabelas
+function mostrarDica(el) {
+  const d = document.getElementById('dica')
+  d.textContent = el.dataset.ajuda
+  d.style.display = 'block'
+  const r = el.getBoundingClientRect(), w = d.offsetWidth, hh = d.offsetHeight
+  let x = r.left + r.width / 2 - w / 2, y = r.top - hh - 8
+  if (y < 8) y = r.bottom + 8
+  x = Math.max(8, Math.min(x, window.innerWidth - w - 8))
+  d.style.left = x + 'px'; d.style.top = y + 'px'
+}
+function esconderDica() { document.getElementById('dica').style.display = 'none' }
+document.addEventListener('mouseover', e => { const a = e.target.closest && e.target.closest('.ajuda'); if (a) mostrarDica(a) })
+document.addEventListener('mouseout', e => { if (e.target.closest && e.target.closest('.ajuda')) esconderDica() })
+document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('ajuda')) mostrarDica(e.target) })
+document.addEventListener('focusout', esconderDica)
+document.addEventListener('scroll', esconderDica, true)
+
 ;(function () {
   const s = ler('admin_sessao')
   if (s) { try { SESSAO = JSON.parse(s) } catch(e) { SESSAO = null } }
