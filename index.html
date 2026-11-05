@@ -586,7 +586,8 @@ function filtrar(sis, opts = {}) {
 function opcoesPessoas() {
   const grupos = []
   for (const sis of sistemasAtivos()) {
-    const nomes = new Set()
+    // Equipe ativa do cadastro (mesmo quem ainda não tem proposta) + N/A
+    const nomes = new Set(['N/A', ...CFG.colabs.filter(c => c.sistema === sis && c.ativo).map(c => c.nome)])
     DADOS[sis].forEach(r => pessoasDe(r).forEach(p => nomes.add(p)))
     grupos.push({ grupo: SIS[sis].nome, itens: [...nomes].sort((a, b) => a === 'N/A' ? 1 : b === 'N/A' ? -1 : a.localeCompare(b, 'pt-BR')).map(p => ({ chave: chavePessoa(sis, p), rot: p })) })
   }
