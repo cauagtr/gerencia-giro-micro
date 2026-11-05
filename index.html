@@ -1,0 +1,1739 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fomento Paraná — Administração</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --azul: #003366; --azul-medio: #004080; --dourado: #F5C400;
+    --bg: #f0f2f5; --card: #ffffff; --borda: #d0d5dd; --borda-suave: #e7eaf0;
+    --texto: #1a1a2e; --suave: #6b7280; --suave2: #94a3b8;
+    --micro: #2563EB; --micro-bg: #EFF6FF; --fgf: #D97706; --fgf-bg: #FFF7ED;
+    --ok: #15803D; --ok-bg: #DCFCE7; --ruim: #B91C1C; --ruim-bg: #FEE2E2; --alerta: #92400E; --alerta-bg: #FEF3C7;
+    --raio: 8px; --sombra: 0 1px 3px rgba(0,0,0,.08);
+  }
+  body { font-family: 'IBM Plex Sans', sans-serif; background: var(--bg); color: var(--texto); font-size: 14px; line-height: 1.5; }
+  button { font-family: inherit; }
+  header { background: var(--azul); color: #fff; padding: 0 24px; display: flex; align-items: center; gap: 16px; height: 64px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+  .brasao { background: var(--dourado); color: var(--azul); font-weight: 700; font-size: 13px; width: 40px; height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .divisor { width: 1px; height: 36px; background: rgba(255,255,255,.2); }
+  header h1 { font-size: 15px; font-weight: 600; }
+  header .sub { font-size: 12px; color: rgba(255,255,255,.65); }
+  .hdr-dir { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 12px; color: rgba(255,255,255,.8); }
+  .selo { background: var(--dourado); color: var(--azul); font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+  .btn-sair { background: transparent; border: 1px solid rgba(255,255,255,.35); color: #fff; border-radius: 6px; padding: 5px 10px; font-size: 12px; cursor: pointer; }
+  nav { background: var(--azul-medio); display: flex; gap: 2px; padding: 0 20px; overflow-x: auto; }
+  .aba { background: transparent; border: none; color: rgba(255,255,255,.65); padding: 14px 18px; font-size: 13px; font-weight: 500; cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .aba:hover { color: #fff; background: rgba(255,255,255,.08); }
+  .aba.ativa { color: var(--dourado); border-bottom-color: var(--dourado); }
+  main { max-width: 1900px; margin: 0 auto; padding: 22px 20px 60px; }
+  .card { background: var(--card); border: 1px solid var(--borda); border-radius: var(--raio); padding: 20px; box-shadow: var(--sombra); }
+  .card + .card { margin-top: 16px; }
+  .card-titulo { font-size: 15px; font-weight: 600; color: var(--azul); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card-sub { font-size: 12.5px; color: var(--suave); margin-bottom: 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 7px; border: 1px solid var(--borda); background: #fff; color: var(--texto); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: #f8fafc; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-pri { background: var(--azul); border-color: var(--azul); color: #fff; }
+  .btn-pri:hover { background: var(--azul-medio); }
+  .btn-perigo { background: #DC2626; border-color: #DC2626; color: #fff; }
+  .btn-perigo:hover { background: #B91C1C; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], select, textarea {
+    font-family: inherit; font-size: 13px; padding: 7px 10px; border: 1px solid var(--borda); border-radius: 7px; background: #fff; color: var(--texto); }
+  input[type=color] { width: 40px; height: 32px; border: 1px solid var(--borda); border-radius: 6px; padding: 2px; background: #fff; cursor: pointer; }
+  label.rot { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; }
+  .linha-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+  .alerta { padding: 11px 14px; border-radius: 8px; font-size: 12.5px; line-height: 1.55; }
+  .alerta-info { background: #EFF6FF; color: #1E3A8A; border: 1px solid #BFDBFE; }
+  .alerta-aviso { background: var(--alerta-bg); color: var(--alerta); border: 1px solid #FCD34D; }
+  .alerta-erro { background: var(--ruim-bg); color: var(--ruim); border: 1px solid #FCA5A5; }
+  .alerta-ok { background: var(--ok-bg); color: var(--ok); border: 1px solid #86EFAC; }
+  .vazio { padding: 40px; text-align: center; color: var(--suave); }
+
+  /* LOGIN */
+  #tela-login { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: linear-gradient(160deg, #003366 0%, #004080 60%, #0b4f8c 100%); }
+  .login-box { background: #fff; border-radius: 12px; padding: 32px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .login-box h2 { font-size: 18px; color: var(--azul); margin: 14px 0 4px; }
+  .login-box p { font-size: 12.5px; color: var(--suave); margin-bottom: 18px; }
+  .login-box input { width: 100%; margin-bottom: 12px; padding: 10px 12px; }
+  .login-box .btn { width: 100%; justify-content: center; padding: 11px; }
+
+  /* FILTROS */
+  .barra-filtros { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--borda); border-radius: 8px; overflow: hidden; background: #fff; }
+  .seg button { border: none; background: transparent; padding: 7px 14px; font-size: 13px; cursor: pointer; color: #334155; border-right: 1px solid var(--borda); }
+  .seg button:last-child { border-right: none; }
+  .seg button.on { background: var(--azul); color: #fff; font-weight: 600; }
+  .ms-wrap { position: relative; }
+  .ms-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border: 1px solid var(--borda); border-radius: 8px; background: #fff; font-size: 13px; cursor: pointer; color: #1f2937; }
+  .ms-btn.parcial { border-color: #2563EB; background: #EFF6FF; color: #1E40AF; font-weight: 600; }
+  .ms-painel { position: absolute; z-index: 300; top: calc(100% + 4px); left: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.15); padding: 8px; min-width: 260px; max-height: 380px; overflow-y: auto; }
+  .ms-acoes { display: flex; gap: 6px; padding: 2px 2px 8px; border-bottom: 1px solid #eef0f3; margin-bottom: 6px; }
+  .ms-acoes button { flex: 1; font-size: 11.5px; padding: 4px 6px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f8fafc; cursor: pointer; }
+  .ms-grupo { font-size: 10.5px; font-weight: 700; color: var(--suave2); text-transform: uppercase; letter-spacing: .5px; padding: 6px 6px 2px; }
+  .ms-opcao { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; font-size: 12.5px; cursor: pointer; user-select: none; }
+  .ms-opcao:hover { background: #f1f5f9; }
+  .periodo { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #475569; }
+  .chip-sis { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 10px; letter-spacing: .3px; }
+  .chip-micro { background: var(--micro-bg); color: var(--micro); }
+  .chip-fgf { background: var(--fgf-bg); color: var(--fgf); }
+
+  /* KPIs */
+  .kpi-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .kpi { background: #fff; border: 1px solid var(--borda-suave); border-left: 4px solid var(--azul); border-radius: 8px; padding: 12px 14px; }
+  .kpi-rot { font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: var(--suave); }
+  .kpi-val { font-size: 24px; font-weight: 700; color: var(--texto); line-height: 1.2; margin-top: 3px; font-variant-numeric: tabular-nums; }
+  .kpi-sub { font-size: 11.5px; color: var(--suave); margin-top: 2px; }
+  .lado-a-lado { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .lado-a-lado { grid-template-columns: 1fr; } }
+  .bloco-sis { border: 1px solid var(--borda-suave); border-radius: 10px; padding: 14px; }
+  .bloco-sis h3 { font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+
+  /* TABELAS */
+  .tab-wrap { overflow-x: auto; border: 1px solid var(--borda-suave); border-radius: 8px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.t th { background: #f8fafc; text-align: left; font-weight: 600; color: #475569; padding: 8px 10px; border-bottom: 1px solid var(--borda-suave); white-space: nowrap; font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; }
+  table.t td { padding: 7px 10px; border-bottom: 1px solid #f1f3f6; vertical-align: middle; }
+  table.t tr:last-child td { border-bottom: none; }
+  table.t tr.total td { font-weight: 700; background: #f8fafc; border-top: 1px solid var(--borda-suave); }
+  table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tbody tr:hover td { background: #fafbfd; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .barra-mini { height: 6px; background: #eef2f7; border-radius: 3px; overflow: hidden; min-width: 60px; }
+  .barra-mini > span { display: block; height: 100%; border-radius: 3px; }
+  .bolinha { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; margin-right: 6px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .tag-ok { background: var(--ok-bg); color: var(--ok); }
+  .tag-off { background: #F1F5F9; color: #64748B; }
+
+  /* RELATÓRIOS */
+  .rel-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .rel-item { border: 1px solid var(--borda); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: #fff; text-align: left; }
+  .rel-item:hover { border-color: var(--azul); }
+  .rel-item.on { border-color: var(--azul); box-shadow: inset 0 0 0 1px var(--azul); background: #F5F8FF; }
+  .rel-item b { display: block; font-size: 13.5px; color: var(--azul); margin-bottom: 2px; }
+  .rel-item span { font-size: 12px; color: var(--suave); }
+  .bloco + .bloco { margin-top: 22px; }
+  .bloco-titulo { font-size: 14px; font-weight: 600; color: var(--azul); margin-bottom: 4px; }
+  .bloco-sub { font-size: 12px; color: var(--suave); margin-bottom: 10px; }
+  .notas { display: grid; gap: 8px; }
+  .nota { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 8px; background: #F8FAFC; border: 1px solid var(--borda-suave); font-size: 13px; }
+  .nota-ico { font-size: 16px; line-height: 1.2; }
+  .grafico { width: 100%; overflow-x: auto; }
+  .grafico svg { width: 100%; height: auto; display: block; }
+  .g-grade { stroke: #eef1f5; stroke-width: 1; }
+  .g-eixo { font-size: 11px; fill: #94a3b8; font-family: 'IBM Plex Sans', sans-serif; }
+  .g-val { font-size: 11px; fill: #334155; font-weight: 600; font-family: 'IBM Plex Sans', sans-serif; }
+  .legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #475569; margin-top: 6px; }
+  .legenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+
+  /* MODAL */
+  .modal-fundo { position: fixed; inset: 0; background: rgba(15,23,42,.45); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 500; }
+  .modal { background: #fff; border-radius: 12px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; padding: 22px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+  .modal.largo { max-width: 980px; }
+  .modal h3 { font-size: 16px; color: var(--azul); margin-bottom: 4px; }
+  .modal .m-sub { font-size: 12.5px; color: var(--suave); margin-bottom: 14px; }
+  .modal-acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+  .opcao-destino { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--borda); border-radius: 8px; padding: 10px 12px; cursor: pointer; margin-bottom: 8px; }
+  .opcao-destino:hover { background: #f8fafc; }
+  .opcao-destino input { margin-top: 3px; }
+  .opcao-destino b { display: block; font-size: 13px; }
+  .opcao-destino span { font-size: 12px; color: var(--suave); }
+  #toast { position: fixed; bottom: 22px; right: 22px; background: #1e293b; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.25); z-index: 900; display: none; max-width: 420px; }
+  #toast.erro { background: #991B1B; }
+  .carregando { padding: 50px; text-align: center; color: var(--suave); }
+  .spinner { width: 28px; height: 28px; border: 3px solid #e2e8f0; border-top-color: var(--azul); border-radius: 50%; animation: gira .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes gira { to { transform: rotate(360deg); } }
+
+  /* IMPRESSÃO (PDF) — A4 deitado, só o relatório */
+  #area-impressao { display: none; }
+  @media print {
+    @page { size: A4 landscape; margin: 12mm 12mm 14mm; }
+    body { background: #fff; font-size: 10.5px; }
+    body > *:not(#area-impressao) { display: none !important; }
+    #area-impressao { display: block !important; }
+    .imp-cab { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #003366; padding-bottom: 6px; margin-bottom: 10px; }
+    .imp-cab h1 { font-size: 16px; color: #003366; }
+    .imp-cab .imp-meta { font-size: 9.5px; color: #475569; text-align: right; }
+    .imp-filtros { font-size: 9.5px; color: #475569; margin-bottom: 10px; }
+    .bloco { break-inside: avoid; page-break-inside: avoid; }
+    .bloco-tab { break-inside: auto; page-break-inside: auto; }
+    table.t tr { break-inside: avoid; }
+    table.t thead { display: table-header-group; }
+    .bloco + .bloco { margin-top: 12px; }
+    .bloco-titulo { font-size: 12px; }
+    table.t { font-size: 9.5px; }
+    table.t th { font-size: 8.5px; padding: 4px 6px; background: #eef2f7 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    table.t td { padding: 3px 6px; }
+    .tab-wrap { border: 1px solid #cbd5e1; overflow: visible; }
+    .kpi { padding: 7px 9px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .kpi-val { font-size: 16px; }
+    .kpi-grade { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+    .lado-a-lado { grid-template-columns: 1fr 1fr; }
+    .nota { padding: 5px 8px; font-size: 10px; }
+    .grafico svg { max-height: 62mm; }
+    .quebra { page-break-before: always; break-before: page; }
+    .imp-rodape { position: fixed; bottom: 0; left: 0; right: 0; font-size: 8.5px; color: #94a3b8; text-align: center; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div id="tela-login" style="display:none">
+  <div class="login-box">
+    <div class="brasao">PR</div>
+    <h2>Administração</h2>
+    <p>Microcrédito e Giro Fácil · acesso restrito</p>
+    <form onsubmit="event.preventDefault(); entrar()">
+      <label class="rot" for="login-email">E-mail</label>
+      <input type="email" id="login-email" autocomplete="username" required/>
+      <label class="rot" for="login-senha">Senha</label>
+      <input type="password" id="login-senha" autocomplete="current-password" required/>
+      <div id="login-erro" class="alerta alerta-erro" style="display:none;margin-bottom:12px"></div>
+      <button class="btn btn-pri" id="btn-entrar" type="submit">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <header>
+    <div class="brasao">PR</div>
+    <div class="divisor"></div>
+    <div>
+      <h1>FOMENTO PARANÁ — Administração</h1>
+      <div class="sub">Microcrédito + Giro Fácil · painel, relatórios e cadastros</div>
+    </div>
+    <div class="hdr-dir">
+      <span id="hdr-usuario"></span>
+      <span class="selo">ADMIN v1.0</span>
+      <button class="btn-sair" onclick="sair()">Sair</button>
+    </div>
+  </header>
+  <nav>
+    <button class="aba ativa" data-aba="visao" onclick="irPara('visao')">📊 Visão Geral</button>
+    <button class="aba" data-aba="relatorios" onclick="irPara('relatorios')">📑 Relatórios</button>
+    <button class="aba" data-aba="colabs" onclick="irPara('colabs')">👥 Colaboradores</button>
+    <button class="aba" data-aba="linhas" onclick="irPara('linhas')">🏷️ Linhas de Crédito</button>
+    <button class="aba" data-aba="redistribuir" onclick="irPara('redistribuir')">🔁 Redistribuir Propostas</button>
+    <button class="aba" data-aba="log" onclick="irPara('log')">📜 Registro de Ações</button>
+  </nav>
+  <main>
+    <div class="card" id="card-filtros" style="margin-bottom:16px"></div>
+    <div id="conteudo"><div class="carregando"><div class="spinner"></div>Carregando os dois sistemas...</div></div>
+  </main>
+</div>
+
+<div id="modal-raiz"></div>
+<div id="area-impressao"></div>
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// ADMINISTRAÇÃO — Microcrédito + Giro Fácil (mesmo Supabase)
+// ════════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://byvqsjhslfdblmiymksf.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5dnFzamhzbGZkYmxtaXlta3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzMTI1OTIsImV4cCI6MjA5MTg4ODU5Mn0.DcwRiV_CePS4KmOG9I7SmqMl83pLQthNvNYQClLdL_4'
+const INICIO_BASE = '2025-01-01'
+const DIAS_PARADA = 30
+const SIS = {
+  micro: { nome: 'Microcrédito', curto: 'Micro', cor: '#2563EB', tabela: 'propostas', ref: 'planilha_referencia' },
+  fgf:   { nome: 'Giro Fácil',   curto: 'Giro Fácil', cor: '#D97706', tabela: 'fgf_propostas', ref: 'fgf_referencia' },
+}
+
+// ── utilidades ──
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+const semAcentoUp = t => (t ?? '').toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase()
+const fmtInt = n => (Number(n) || 0).toLocaleString('pt-BR')
+const fmtBRL = n => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+const fmtBRLk = n => { const v = Number(n) || 0; return v >= 1e6 ? 'R$ ' + (v/1e6).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + ' mi' : v >= 1e3 ? 'R$ ' + (v/1e3).toLocaleString('pt-BR', {maximumFractionDigits: 0}) + ' mil' : fmtBRL(v) }
+const fmtPct = (v, casas = 1) => v === null || v === undefined || isNaN(v) ? '—' : (v * 100).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas }) + '%'
+const fmtNum = (v, casas = 1) => v === null || v === undefined || isNaN(v) ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas })
+const fmtDias = v => v === null || v === undefined || isNaN(v) ? '—' : Math.round(v).toLocaleString('pt-BR') + ' d'
+const isoDia = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+const hojeIso = () => isoDia(new Date())
+const paraData = s => s ? new Date(String(s).split('T')[0] + 'T12:00:00') : null
+const diasEntre = (a, b) => { const x = paraData(a), y = paraData(b); return x && y ? Math.round((y - x) / 86400000) : null }
+const fmtData = s => { const d = paraData(s); return d ? d.toLocaleDateString('pt-BR') : '—' }
+const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']
+const rotMes = ym => { const [a, m] = ym.split('-'); return `${MESES[+m-1]}/${a.slice(2)}` }
+
+function toast(msg, erro) {
+  const t = document.getElementById('toast')
+  t.textContent = msg
+  t.className = erro ? 'erro' : ''
+  t.style.display = 'block'
+  clearTimeout(toast._t)
+  toast._t = setTimeout(() => { t.style.display = 'none' }, erro ? 6000 : 3200)
+}
+function guardar(chave, valor) { try { sessionStorage.setItem(chave, valor) } catch(e) {} }
+function ler(chave) { try { return sessionStorage.getItem(chave) } catch(e) { return null } }
+function apagar(chave) { try { sessionStorage.removeItem(chave) } catch(e) {} }
+
+// ════════════ LOGIN (Supabase Auth) ════════════
+let SESSAO = null   // { access_token, refresh_token, expira, email }
+
+async function authPost(caminho, corpo, token) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/${caminho}`, {
+    method: 'POST',
+    headers: { 'apikey': SUPABASE_KEY, 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+    body: JSON.stringify(corpo || {}),
+  })
+  const txt = await res.text()
+  let json = null
+  try { json = txt ? JSON.parse(txt) : null } catch(e) {}
+  if (!res.ok) throw new Error((json && (json.error_description || json.msg || json.message)) || `Erro ${res.status}`)
+  return json
+}
+function salvarSessao(j) {
+  SESSAO = { access_token: j.access_token, refresh_token: j.refresh_token, expira: Date.now() + (j.expires_in || 3600) * 1000, email: (j.user && j.user.email) || (SESSAO && SESSAO.email) || '' }
+  guardar('admin_sessao', JSON.stringify(SESSAO))
+}
+async function entrar() {
+  const email = document.getElementById('login-email').value.trim()
+  const senha = document.getElementById('login-senha').value
+  const erro = document.getElementById('login-erro')
+  const btn = document.getElementById('btn-entrar')
+  erro.style.display = 'none'
+  btn.disabled = true; btn.textContent = 'Entrando...'
+  try {
+    const j = await authPost('token?grant_type=password', { email, password: senha })
+    salvarSessao(j)
+    iniciarApp()
+  } catch(e) {
+    erro.textContent = /invalid/i.test(e.message) ? 'E-mail ou senha incorretos.' : 'Não foi possível entrar: ' + e.message
+    erro.style.display = 'block'
+  }
+  btn.disabled = false; btn.textContent = 'Entrar'
+}
+async function tokenValido() {
+  if (!SESSAO) return null
+  if (Date.now() < SESSAO.expira - 60000) return SESSAO.access_token
+  try {
+    const j = await authPost('token?grant_type=refresh_token', { refresh_token: SESSAO.refresh_token })
+    salvarSessao(j)
+    return SESSAO.access_token
+  } catch(e) {
+    sair(true)
+    throw new Error('Sua sessão expirou. Entre de novo.')
+  }
+}
+async function sair(silencioso) {
+  try { if (SESSAO) await authPost('logout', {}, SESSAO.access_token) } catch(e) {}
+  SESSAO = null
+  apagar('admin_sessao')
+  document.getElementById('app').style.display = 'none'
+  document.getElementById('tela-login').style.display = 'flex'
+  if (!silencioso) toast('Você saiu.')
+}
+
+// ════════════ BANCO (REST) ════════════
+async function api(caminho, opts = {}) {
+  const token = await tokenValido()
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${caminho}`, {
+    method: opts.method || 'GET',
+    headers: {
+      'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${token || SUPABASE_KEY}`,
+      'Content-Type': 'application/json', 'Prefer': opts.prefer || '',
+    },
+    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+  })
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`)
+  const ct = res.headers.get('content-type') || ''
+  return ct.includes('json') && res.status !== 204 ? res.json() : null
+}
+async function apiTodos(caminho, tam = 1000) {
+  const sep = caminho.includes('?') ? '&' : '?'
+  let todos = []
+  for (let p = 0; p < 200; p++) {
+    const lote = await api(`${caminho}${sep}limit=${tam}&offset=${p * tam}`)
+    todos = todos.concat(lote || [])
+    if (!lote || lote.length < tam) break
+  }
+  return todos
+}
+const listaCodigos = cods => `codigo=in.(${cods.map(c => `"${String(c).replace(/"/g, '')}"`).join(',')})`
+async function patchEmLotes(tabela, cods, corpo) {
+  for (let i = 0; i < cods.length; i += 150) {
+    await api(`${tabela}?${listaCodigos(cods.slice(i, i + 150))}`, { method: 'PATCH', prefer: 'return=minimal', body: corpo })
+  }
+}
+async function registrarLog(sistema, acao, detalhes) {
+  try { await api('admin_log', { method: 'POST', prefer: 'return=minimal', body: { usuario: SESSAO && SESSAO.email, sistema, acao, detalhes } }) }
+  catch(e) { console.warn('log não gravado', e) }
+}
+
+// ════════════ DADOS ════════════
+const DADOS = { micro: [], fgf: [] }
+const CFG = { colabs: [], linhas: [], ok: false }
+
+const FINAL_OK  = ['concedido']
+const FINAL_NAO = ['recusado', 'excluído', 'excluido']
+// Fases comparáveis entre os dois sistemas (as listas de etapas são diferentes)
+const FASES = ['Cadastro', 'Regularização', 'Análise', 'Aprovação', 'Contrato', 'Outras']
+const MAPA_FASE = [
+  ['REGULARIZACAO', 'Regularização'], ['ALTERACAO DE ENVOLVIDOS', 'Cadastro'],
+  ['CADASTRAMENTO', 'Cadastro'], ['CONSULTA CADASTRAL', 'Cadastro'], ['PREPARACAO', 'Cadastro'], ['RECEPCAO DE DOCUMENTOS', 'Cadastro'],
+  ['ANALISE', 'Análise'], ['APROVACAO CADASTRAL', 'Análise'],
+  ['APROVACAO', 'Aprovação'],
+  ['CONTRATO', 'Contrato'], ['ASSINATURA', 'Contrato'], ['LIBERACAO', 'Contrato'],
+]
+function faseDaEtapa(etapa) {
+  const u = semAcentoUp(etapa).replace(/^\d+(\.\d+)?\s*-\s*/, '').trim()
+  for (const [chave, fase] of MAPA_FASE) if (u.includes(chave)) return fase
+  return 'Outras'
+}
+const etapaLimpa = e => (e || '—').toString().trim().replace(/^\d+(\.\d+)?\s*-\s*/, '') || '—'
+
+function regrasLinha(sis) {
+  return CFG.linhas.filter(l => l.sistema === sis).sort((a, b) => a.prioridade - b.prioridade)
+    .map(l => ({ ...l, termos: String(l.palavras || '').split(',').map(x => semAcentoUp(x).trim()).filter(Boolean) }))
+}
+function linhaOficial(sis, txt) {
+  const u = semAcentoUp(txt).trim()
+  if (!u) return '(sem linha)'
+  const r = regrasLinha(sis).find(l => l.termos.length && l.termos.every(t => u.includes(t)))
+  return r ? r.nome : (txt || '').toString().trim()
+}
+function corLinha(sis, nome) {
+  const r = CFG.linhas.find(l => l.sistema === sis && l.nome === nome)
+  return r ? r.cor : '#94A3B8'
+}
+function corPessoa(sis, nome) {
+  const c = CFG.colabs.find(x => x.sistema === sis && x.nome === nome)
+  return c ? c.cor : '#CBD5E1'
+}
+const normPessoa = v => { const t = (v || '').toString().toUpperCase().trim(); return t || 'N/A' }
+
+function prepararRegistro(sis, p) {
+  const et = (p.etapa || '').toString().trim()
+  const etl = et.toLowerCase()
+  const final = FINAL_OK.includes(etl) ? 'conc' : FINAL_NAO.includes(etl) ? 'nao' : null
+  const cad = p.data_cadastro ? String(p.data_cadastro).split('T')[0] : null
+  const nae = p.na_etapa_desde ? String(p.na_etapa_desde).split('T')[0] : null
+  const r = {
+    sis, codigo: String(p.codigo), etapa: et || '—', final,
+    fase: final ? null : faseDaEtapa(et),
+    valor: Number(p.valor) || 0,
+    linha: linhaOficial(sis, p.linha_credito),
+    linhaBruta: p.linha_credito || '',
+    cad, nae,
+    cliente: (sis === 'micro' ? p.razao_social : p.nome) || '',
+    municipio: (p.municipio || '').toString().trim(),
+    arquivada: !!p.arquivada,
+    transferencia: !!p.transferencia,
+    resp: normPessoa(p.responsavel),
+    estag: sis === 'fgf' ? normPessoa(p.estagiario) : null,
+  }
+  // Tempo: decididas = cadastro → decisão (data em que entrou na etapa final)
+  r.leadTime = final && cad && nae ? Math.max(0, diasEntre(cad, nae)) : null
+  r.diasParado = !final && nae ? Math.max(0, diasEntre(nae, hojeIso())) : null
+  r.idade = cad ? Math.max(0, diasEntre(cad, hojeIso())) : null
+  return r
+}
+function pessoasDe(r) {
+  const ps = []
+  if (r.resp !== 'N/A') ps.push(r.resp)
+  if (r.sis === 'fgf' && r.estag !== 'N/A') ps.push(r.estag)
+  return ps.length ? ps : ['N/A']
+}
+
+async function carregarConfig() {
+  try {
+    const [c, l] = await Promise.all([
+      api('config_colaboradores?select=*&order=sistema.asc,ordem.asc,nome.asc'),
+      api('config_linhas?select=*&order=sistema.asc,prioridade.asc'),
+    ])
+    CFG.colabs = c || []; CFG.linhas = l || []; CFG.ok = true
+  } catch(e) {
+    CFG.ok = false
+    console.error(e)
+  }
+}
+async function carregarPropostas(sis) {
+  const campos = sis === 'micro'
+    ? 'codigo,etapa,responsavel,valor,linha_credito,data_cadastro,na_etapa_desde,razao_social,municipio,arquivada,transferencia'
+    : 'codigo,etapa,responsavel,estagiario,valor,linha_credito,data_cadastro,na_etapa_desde,nome,municipio,arquivada,transferencia'
+  let brutos
+  try { brutos = await apiTodos(`${SIS[sis].tabela}?select=${campos}`) }
+  catch(e) { brutos = await apiTodos(`${SIS[sis].tabela}?select=*`) }   // coluna faltando: pega tudo
+  DADOS[sis] = brutos.map(p => prepararRegistro(sis, p))
+}
+async function carregarTudo() {
+  await carregarConfig()
+  await Promise.all([carregarPropostas('micro'), carregarPropostas('fgf')])
+  CARREGADO_EM = new Date()
+}
+let CARREGADO_EM = null
+
+// ════════════ ESTATÍSTICA ════════════
+const soma = a => a.reduce((s, v) => s + v, 0)
+const media = a => a.length ? soma(a) / a.length : null
+function quantil(a, q) {
+  if (!a.length) return null
+  const s = [...a].sort((x, y) => x - y)
+  const pos = (s.length - 1) * q, b = Math.floor(pos), r = pos - b
+  return s[b + 1] !== undefined ? s[b] + r * (s[b + 1] - s[b]) : s[b]
+}
+const mediana = a => quantil(a, 0.5)
+// Intervalo de confiança de 95% (Wilson) para uma proporção
+function wilson(k, n, z = 1.96) {
+  if (!n) return [null, null]
+  const p = k / n, d = 1 + z*z/n
+  const c = (p + z*z/(2*n)) / d, m = z * Math.sqrt(p*(1-p)/n + z*z/(4*n*n)) / d
+  return [Math.max(0, c - m), Math.min(1, c + m)]
+}
+// Teste z para diferença entre duas proporções (bicaudal)
+function testeDuasProporcoes(k1, n1, k2, n2) {
+  if (!n1 || !n2) return null
+  const p1 = k1/n1, p2 = k2/n2, p = (k1 + k2) / (n1 + n2)
+  const se = Math.sqrt(p * (1 - p) * (1/n1 + 1/n2))
+  if (!se) return null
+  const z = (p1 - p2) / se
+  return { z, p: 2 * (1 - normalCDF(Math.abs(z))), dif: p1 - p2 }
+}
+function normalCDF(x) {
+  const t = 1 / (1 + 0.2316419 * x), d = 0.3989423 * Math.exp(-x * x / 2)
+  const pr = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))))
+  return 1 - pr
+}
+// Regressão linear simples y = a + b·x  (x = 0..n-1)
+function regressao(ys) {
+  const n = ys.length
+  if (n < 2) return { a: ys[0] || 0, b: 0, r2: 0, prever: () => ys[0] || 0 }
+  const xs = ys.map((_, i) => i), mx = media(xs), my = media(ys)
+  const sxx = soma(xs.map(x => (x - mx) ** 2)), sxy = soma(xs.map((x, i) => (x - mx) * (ys[i] - my)))
+  const b = sxx ? sxy / sxx : 0, a = my - b * mx
+  const sst = soma(ys.map(y => (y - my) ** 2)), sse = soma(ys.map((y, i) => (y - (a + b * i)) ** 2))
+  return { a, b, r2: sst ? 1 - sse / sst : 0, prever: x => Math.max(0, a + b * x) }
+}
+const mediaMovel = (a, j = 3) => a.map((_, i) => i < j - 1 ? null : media(a.slice(i - j + 1, i + 1)))
+
+// Resumo padrão de um conjunto de propostas
+function resumo(lista) {
+  const conc = lista.filter(r => r.final === 'conc'), nao = lista.filter(r => r.final === 'nao')
+  const ativas = lista.filter(r => !r.final)
+  const dec = conc.length + nao.length
+  const vConc = soma(conc.map(r => r.valor)), vNao = soma(nao.map(r => r.valor))
+  const leads = conc.map(r => r.leadTime).filter(v => v !== null)
+  const paradas = ativas.filter(r => r.diasParado !== null && r.diasParado > DIAS_PARADA)
+  return {
+    total: lista.length, ativas: ativas.length, conc: conc.length, nao: nao.length, decididas: dec,
+    valorTotal: soma(lista.map(r => r.valor)), valorAtivas: soma(ativas.map(r => r.valor)),
+    valorConc: vConc, valorNao: vNao,
+    convQtd: dec ? conc.length / dec : null, ic: wilson(conc.length, dec),
+    convValor: (vConc + vNao) ? vConc / (vConc + vNao) : null,
+    ticketConc: conc.length ? vConc / conc.length : null,
+    ticketPedido: lista.length ? soma(lista.map(r => r.valor)) / lista.length : null,
+    leadMediana: mediana(leads), leadP25: quantil(leads, .25), leadP75: quantil(leads, .75),
+    paradas: paradas.length,
+    paradoMediana: mediana(ativas.map(r => r.diasParado).filter(v => v !== null)),
+  }
+}
+
+// ════════════ FILTROS GLOBAIS ════════════
+const FILTRO = {
+  sis: 'ambos', ini: INICIO_BASE, fim: '',
+  excluiPessoa: new Set(), excluiLinha: new Set(), excluiFase: new Set(),
+  arquivadas: false,
+}
+let DROP = ''
+function sistemasAtivos() { return FILTRO.sis === 'ambos' ? ['micro', 'fgf'] : [FILTRO.sis] }
+const chavePessoa = (sis, p) => `${sis}|${p}`
+const chaveLinha  = (sis, l) => `${sis}|${l}`
+function situacaoDe(r) { return r.final === 'conc' ? 'Concedida' : r.final === 'nao' ? 'Recusada/Excluída' : r.fase }
+
+function filtrar(sis, opts = {}) {
+  let l = DADOS[sis]
+  if (!FILTRO.arquivadas) l = l.filter(r => !r.arquivada)
+  if (!opts.semPeriodo) {
+    if (FILTRO.ini) l = l.filter(r => r.cad && r.cad >= FILTRO.ini)
+    if (FILTRO.fim) l = l.filter(r => r.cad && r.cad <= FILTRO.fim)
+  }
+  if (FILTRO.excluiPessoa.size) l = l.filter(r => pessoasDe(r).some(p => !FILTRO.excluiPessoa.has(chavePessoa(sis, p))))
+  if (FILTRO.excluiLinha.size) l = l.filter(r => !FILTRO.excluiLinha.has(chaveLinha(sis, r.linha)))
+  if (FILTRO.excluiFase.size) l = l.filter(r => !FILTRO.excluiFase.has(situacaoDe(r)))
+  return l
+}
+function opcoesPessoas() {
+  const grupos = []
+  for (const sis of sistemasAtivos()) {
+    const nomes = new Set()
+    DADOS[sis].forEach(r => pessoasDe(r).forEach(p => nomes.add(p)))
+    grupos.push({ grupo: SIS[sis].nome, itens: [...nomes].sort((a, b) => a === 'N/A' ? 1 : b === 'N/A' ? -1 : a.localeCompare(b, 'pt-BR')).map(p => ({ chave: chavePessoa(sis, p), rot: p })) })
+  }
+  return grupos
+}
+function opcoesLinhas() {
+  return sistemasAtivos().map(sis => ({ grupo: SIS[sis].nome,
+    itens: [...new Set(DADOS[sis].map(r => r.linha))].sort((a, b) => a.localeCompare(b, 'pt-BR')).map(l => ({ chave: chaveLinha(sis, l), rot: l })) }))
+}
+function opcoesSituacao() {
+  return [{ grupo: 'Em andamento (fase)', itens: FASES.map(f => ({ chave: f, rot: f })) },
+          { grupo: 'Decididas', itens: [{ chave: 'Concedida', rot: 'Concedida' }, { chave: 'Recusada/Excluída', rot: 'Recusada/Excluída' }] }]
+}
+const OPCOES_FILTRO = { pessoa: opcoesPessoas, linha: opcoesLinhas, fase: opcoesSituacao }
+const CONJ_FILTRO = { pessoa: 'excluiPessoa', linha: 'excluiLinha', fase: 'excluiFase' }
+
+function msFiltro(id, icone, rotulo) {
+  const grupos = OPCOES_FILTRO[id]()
+  const todas = grupos.flatMap(g => g.itens.map(i => i.chave))
+  const exc = FILTRO[CONJ_FILTRO[id]]
+  const marcadas = todas.filter(c => !exc.has(c)).length
+  const parcial = marcadas < todas.length
+  return `<div class="ms-wrap" onclick="event.stopPropagation()">
+    <button class="ms-btn${parcial ? ' parcial' : ''}" onclick="DROP = DROP==='${id}' ? '' : '${id}'; renderFiltros()">${icone} ${rotulo}: ${parcial ? `${marcadas} de ${todas.length}` : `Todos (${todas.length})`} ▾</button>
+    ${DROP === id ? `<div class="ms-painel">
+      <div class="ms-acoes">
+        <button onclick="FILTRO.${CONJ_FILTRO[id]}.clear(); aplicarFiltros()">Marcar todos</button>
+        <button onclick="msDesmarcarTodos('${id}')">Desmarcar todos</button>
+      </div>
+      ${grupos.map(g => `<div class="ms-grupo">${esc(g.grupo)}</div>` + g.itens.map(i =>
+        `<label class="ms-opcao"><input type="checkbox" ${exc.has(i.chave) ? '' : 'checked'} data-chave="${esc(i.chave)}" onchange="msAlternar('${id}', this.dataset.chave)"> ${esc(i.rot)}</label>`).join('')).join('')}
+    </div>` : ''}
+  </div>`
+}
+function msAlternar(id, chave) {
+  const s = FILTRO[CONJ_FILTRO[id]]
+  if (s.has(chave)) s.delete(chave); else s.add(chave)
+  aplicarFiltros()
+}
+function msDesmarcarTodos(id) {
+  OPCOES_FILTRO[id]().forEach(g => g.itens.forEach(i => FILTRO[CONJ_FILTRO[id]].add(i.chave)))
+  aplicarFiltros()
+}
+document.addEventListener('click', () => { if (DROP) { DROP = ''; renderFiltros() } })
+
+function definirPeriodo(tipo) {
+  const h = new Date(), a = h.getFullYear(), m = h.getMonth()
+  const p = {
+    mes:       [isoDia(new Date(a, m, 1)), ''],
+    mesAnt:    [isoDia(new Date(a, m - 1, 1)), isoDia(new Date(a, m, 0))],
+    tri:       [isoDia(new Date(a, m - 2, 1)), ''],
+    ano:       [`${a}-01-01`, ''],
+    anoAnt:    [`${a-1}-01-01`, `${a-1}-12-31`],
+    tudo:      [INICIO_BASE, ''],
+  }[tipo]
+  FILTRO.ini = p[0]; FILTRO.fim = p[1]
+  aplicarFiltros()
+}
+function dataPronta(v) { if (!v) return true; const ano = +String(v).split('-')[0]; return ano >= 2000 && ano <= 2100 }
+
+function textoFiltros() {
+  const partes = [`Sistema: ${FILTRO.sis === 'ambos' ? 'Microcrédito + Giro Fácil' : SIS[FILTRO.sis].nome}`,
+    `Cadastro: ${FILTRO.ini ? fmtData(FILTRO.ini) : 'início'} a ${FILTRO.fim ? fmtData(FILTRO.fim) : 'hoje'}`]
+  if (FILTRO.excluiPessoa.size) partes.push(`${FILTRO.excluiPessoa.size} pessoa(s) fora`)
+  if (FILTRO.excluiLinha.size) partes.push(`${FILTRO.excluiLinha.size} linha(s) fora`)
+  if (FILTRO.excluiFase.size) partes.push(`situações fora: ${[...FILTRO.excluiFase].join(', ')}`)
+  if (FILTRO.arquivadas) partes.push('inclui arquivadas')
+  return partes.join(' · ')
+}
+
+function renderFiltros() {
+  const el = document.getElementById('card-filtros')
+  const abaUsaFiltro = ['visao', 'relatorios'].includes(ABA)
+  if (!abaUsaFiltro) { el.style.display = 'none'; return }
+  el.style.display = ''
+  el.innerHTML = `
+    <div class="barra-filtros">
+      <div class="seg">
+        ${[['ambos','Ambos'],['micro','Microcrédito'],['fgf','Giro Fácil']].map(([v, r]) =>
+          `<button class="${FILTRO.sis === v ? 'on' : ''}" onclick="FILTRO.sis='${v}'; aplicarFiltros()">${r}</button>`).join('')}
+      </div>
+      ${msFiltro('pessoa', '👤', 'Pessoas')}
+      ${msFiltro('linha', '🏷️', 'Linhas')}
+      ${msFiltro('fase', '📊', 'Situação')}
+      <label class="ms-opcao" style="padding:0"><input type="checkbox" ${FILTRO.arquivadas ? 'checked' : ''} onchange="FILTRO.arquivadas=this.checked; aplicarFiltros()"> incluir arquivadas</label>
+      <button class="btn btn-sm" style="margin-left:auto" onclick="recarregar()">↻ Atualizar dados</button>
+    </div>
+    <div class="barra-filtros" style="margin-top:10px">
+      <span class="periodo">📅 Data de cadastro
+        <input type="date" value="${FILTRO.ini}" max="9999-12-31" onchange="if(dataPronta(this.value)){FILTRO.ini=this.value; aplicarFiltros()}">
+        até
+        <input type="date" value="${FILTRO.fim}" max="9999-12-31" onchange="if(dataPronta(this.value)){FILTRO.fim=this.value; aplicarFiltros()}">
+      </span>
+      <div class="seg">
+        ${[['mes','Mês atual'],['mesAnt','Mês passado'],['tri','Últimos 3 meses'],['ano','Este ano'],['anoAnt','Ano passado'],['tudo','Tudo (2025+)']].map(([v, r]) =>
+          `<button onclick="definirPeriodo('${v}')">${r}</button>`).join('')}
+      </div>
+      <span style="font-size:12px;color:var(--suave2);margin-left:auto">${CARREGADO_EM ? 'Dados de ' + CARREGADO_EM.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : ''} · Micro ${fmtInt(DADOS.micro.length)} · Giro Fácil ${fmtInt(DADOS.fgf.length)}</span>
+    </div>`
+}
+function aplicarFiltros() { renderFiltros(); renderAba() }
+
+// ════════════ GRÁFICOS (SVG) ════════════
+function escalaMax(v) {
+  if (v <= 0) return 1
+  const pot = Math.pow(10, Math.floor(Math.log10(v))), n = v / pot
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * pot
+}
+// Barras verticais (agrupadas por série), com linha de tendência opcional
+function gBarras({ categorias, series, formato = fmtInt, tendencia = null, destacarUltima = false, altura = 270, rotulos = true }) {
+  const W = 960, H = altura, L = 56, R = 16, T = 22, B = 44
+  const larg = W - L - R, alt = H - T - B
+  const maxBruto = Math.max(1, ...series.flatMap(s => s.valores.map(v => v || 0)), ...(tendencia ? tendencia.valores.filter(v => v !== null) : []))
+  const max = escalaMax(maxBruto / 4) * 4          // 4 divisões redondas (0, 10, 20...)
+  const slot = larg / Math.max(1, categorias.length)
+  const gw = Math.min(110, slot * 0.72), bw = gw / series.length
+  const y = v => T + alt - (v / max) * alt
+  const marcas = [0, .25, .5, .75, 1].map(f => max * f)
+  const mostrarVal = rotulos && categorias.length * series.length <= 40
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans, sans-serif">`
+  marcas.forEach(m => { svg += `<line x1="${L}" x2="${W-R}" y1="${y(m).toFixed(1)}" y2="${y(m).toFixed(1)}" class="g-grade" stroke="#eef1f5"/><text x="${L-8}" y="${(y(m)+4).toFixed(1)}" text-anchor="end" class="g-eixo" font-size="11" fill="#94a3b8">${formato(m)}</text>` })
+  categorias.forEach((c, i) => {
+    const x0 = L + slot * i + (slot - gw) / 2
+    series.forEach((s, j) => {
+      const v = s.valores[i] || 0, yy = y(v), h = T + alt - yy
+      const opac = destacarUltima && i === categorias.length - 1 ? 0.45 : 1
+      svg += `<rect x="${(x0 + bw*j + 1).toFixed(1)}" y="${yy.toFixed(1)}" width="${Math.max(bw - 2, 1).toFixed(1)}" height="${Math.max(h, 0).toFixed(1)}" rx="3" fill="${s.cor}" fill-opacity="${opac}"><title>${esc(c)} · ${esc(s.nome)}: ${formato(v)}</title></rect>`
+      if (mostrarVal && v) svg += `<text x="${(x0 + bw*j + bw/2).toFixed(1)}" y="${(yy - 5).toFixed(1)}" text-anchor="middle" class="g-val" font-size="10.5" fill="#334155" font-weight="600">${formato(v)}</text>`
+    })
+    svg += `<text x="${(L + slot*i + slot/2).toFixed(1)}" y="${H - 22}" text-anchor="middle" class="g-eixo" font-size="11" fill="#64748b">${esc(c)}</text>`
+  })
+  if (tendencia) {
+    const pts = tendencia.valores.map((v, i) => v === null ? null : `${(L + slot*i + slot/2).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean)
+    svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="${tendencia.cor || '#0f172a'}" stroke-width="2" stroke-dasharray="7 5"/>`
+  }
+  return svg + '</svg>'
+}
+// Linhas (ex: conversão ao longo do tempo)
+function gLinhas({ categorias, series, formato = fmtInt, min = 0, max = null, altura = 250 }) {
+  const W = 960, H = altura, L = 56, R = 16, T = 18, B = 40
+  const larg = W - L - R, alt = H - T - B
+  const vals = series.flatMap(s => s.valores.filter(v => v !== null && v !== undefined))
+  const mx = max !== null ? max : escalaMax(Math.max(1e-9, ...vals) / 4) * 4
+  const x = i => L + (categorias.length <= 1 ? larg / 2 : (larg * i) / (categorias.length - 1))
+  const y = v => T + alt - ((v - min) / (mx - min || 1)) * alt
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans, sans-serif">`
+  ;[0, .25, .5, .75, 1].forEach(f => { const v = min + (mx - min) * f; svg += `<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#eef1f5"/><text x="${L-8}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#94a3b8">${formato(v)}</text>` })
+  const passo = Math.ceil(categorias.length / 14)
+  categorias.forEach((c, i) => { if (i % passo === 0 || i === categorias.length - 1) svg += `<text x="${x(i).toFixed(1)}" y="${H - 18}" text-anchor="middle" font-size="11" fill="#64748b">${esc(c)}</text>` })
+  series.forEach(s => {
+    let d = '', aberto = false
+    s.valores.forEach((v, i) => { if (v === null || v === undefined) { aberto = false; return } d += `${aberto ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)} `; aberto = true })
+    svg += `<path d="${d}" fill="none" stroke="${s.cor}" stroke-width="${s.fina ? 1.5 : 2.5}" ${s.tracejado ? 'stroke-dasharray="6 5"' : ''}/>`
+    if (!s.semPontos) s.valores.forEach((v, i) => { if (v !== null && v !== undefined) svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3" fill="${s.cor}"><title>${esc(categorias[i])} · ${esc(s.nome)}: ${formato(v)}</title></circle>` })
+  })
+  return svg + '</svg>'
+}
+// Barras horizontais (rankings, distribuições)
+function gBarrasH({ itens, formato = fmtInt, larguraRot = 220 }) {
+  const W = 960, linhaH = 26, T = 6, H = T + itens.length * linhaH + 6, L = larguraRot, R = 110
+  const max = Math.max(1e-9, ...itens.map(i => i.val || 0))
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="max-width:${W}px" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Sans, sans-serif">`
+  itens.forEach((it, i) => {
+    const yy = T + i * linhaH, w = ((it.val || 0) / max) * (W - L - R)
+    svg += `<text x="${L - 10}" y="${yy + 17}" text-anchor="end" font-size="12" fill="#334155">${esc(it.rot)}</text>`
+    svg += `<rect x="${L}" y="${yy + 5}" width="${Math.max(w, 0).toFixed(1)}" height="16" rx="3" fill="${it.cor || '#003366'}"><title>${esc(it.rot)}: ${formato(it.val)}</title></rect>`
+    svg += `<text x="${(L + w + 6).toFixed(1)}" y="${yy + 17}" font-size="11.5" fill="#334155" font-weight="600">${formato(it.val)}${it.extra ? ` <tspan fill="#94a3b8" font-weight="400">${esc(it.extra)}</tspan>` : ''}</text>`
+  })
+  return svg + '</svg>'
+}
+
+// ════════════ BLOCOS (tela, PDF e Excel usam a mesma estrutura) ════════════
+const FMT = {
+  txt: v => esc(v ?? '—'), int: v => fmtInt(v), brl: v => fmtBRL(v), pct: v => fmtPct(v),
+  dias: v => fmtDias(v), num: v => fmtNum(v), ic: v => v && v[0] !== null ? `${fmtPct(v[0], 0)}–${fmtPct(v[1], 0)}` : '—',
+  html: v => v ?? '',
+}
+function htmlBloco(b) {
+  const cab = (b.titulo ? `<div class="bloco-titulo">${esc(b.titulo)}</div>` : '') + (b.sub ? `<div class="bloco-sub">${b.sub}</div>` : '')
+  if (b.tipo === 'kpis') return `<div class="bloco">${cab}<div class="kpi-grade">${b.itens.map(k =>
+    `<div class="kpi" style="border-left-color:${k.cor || 'var(--azul)'}"><div class="kpi-rot">${esc(k.rot)}</div><div class="kpi-val">${k.val}</div>${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}</div>`).join('')}</div></div>`
+  if (b.tipo === 'lado') return `<div class="bloco">${cab}<div class="lado-a-lado">${b.colunas.map(c =>
+    `<div class="bloco-sis"><h3>${c.titulo}</h3>${c.blocos.map(htmlBloco).join('')}</div>`).join('')}</div></div>`
+  if (b.tipo === 'grafico') return `<div class="bloco">${cab}<div class="grafico">${b.svg}</div>${b.legenda ? `<div class="legenda">${b.legenda.map(l => `<span><i style="background:${l.cor}${l.tracejado ? ';height:2px;vertical-align:3px;border-top:2px dashed ' + l.cor + ';background:none' : ''}"></i>${esc(l.rot)}</span>`).join('')}</div>` : ''}</div>`
+  if (b.tipo === 'notas') return `<div class="bloco">${cab}<div class="notas">${b.itens.map(n => `<div class="nota"><span class="nota-ico">${n.ico || '•'}</span><span>${n.txt}</span></div>`).join('')}</div></div>`
+  if (b.tipo === 'tabela') {
+    if (!b.linhas.length) return `<div class="bloco">${cab}<div class="vazio">Sem dados para os filtros escolhidos.</div></div>`
+    const num = c => ['int','brl','pct','dias','num','ic'].includes(c.tipo)
+    return `<div class="bloco bloco-tab">${cab}<div class="tab-wrap"><table class="t"><thead><tr>${b.colunas.map(c => `<th class="${num(c) ? 'n' : ''}">${esc(c.rot)}</th>`).join('')}</tr></thead><tbody>
+      ${b.linhas.map(l => `<tr>${l.map((v, i) => `<td class="${num(b.colunas[i]) ? 'n' : ''}">${(b.colunas[i].fmt || FMT[b.colunas[i].tipo] || FMT.txt)(v)}</td>`).join('')}</tr>`).join('')}
+      ${b.total ? `<tr class="total">${b.total.map((v, i) => `<td class="${num(b.colunas[i]) ? 'n' : ''}">${v === '' ? '' : (b.colunas[i].fmt || FMT[b.colunas[i].tipo] || FMT.txt)(v)}</td>`).join('')}</tr>` : ''}
+    </tbody></table></div></div>`
+  }
+  return ''
+}
+function htmlRelatorio(rel) { return rel.blocos.map(htmlBloco).join('') }
+
+// ── PDF: monta uma página limpa e abre a impressão do navegador ("Salvar como PDF") ──
+function exportarPDF(rel) {
+  const area = document.getElementById('area-impressao')
+  const agora = new Date()
+  area.innerHTML = `
+    <div class="imp-cab">
+      <div><div style="font-size:9px;color:#64748b;letter-spacing:.5px">FOMENTO PARANÁ · ADMINISTRAÇÃO</div><h1>${esc(rel.titulo)}</h1></div>
+      <div class="imp-meta">Gerado em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}<br>${esc(SESSAO ? SESSAO.email : '')}</div>
+    </div>
+    <div class="imp-filtros">${esc(textoFiltros())}${rel.sub ? ' · ' + esc(rel.sub.replace(/<[^>]+>/g, '')) : ''}</div>
+    ${rel.blocos.map((b, i) => (b.quebra ? '<div class="quebra"></div>' : '') + htmlBloco(b)).join('')}
+    <div class="imp-rodape">Fomento Paraná — relatório interno · ${esc(rel.titulo)}</div>`
+  setTimeout(() => window.print(), 150)
+}
+
+// ── Excel: uma aba de resumo + uma aba por tabela, com números de verdade e formatos ──
+const FORMATO_XLSX = { brl: '"R$" #,##0.00', pct: '0.0%', int: '#,##0', dias: '0', num: '#,##0.0' }
+function exportarExcel(rel, incluirDados = true) {
+  if (typeof XLSX === 'undefined') { toast('A biblioteca do Excel não carregou. Recarregue a página.', true); return }
+  const wb = XLSX.utils.book_new()
+  const usados = new Set()
+  const nomeAba = n => { let b = String(n || 'Tabela').replace(/[\\/?*[\]:]/g, ' ').slice(0, 28).trim() || 'Tabela', x = b, i = 2; while (usados.has(x)) x = `${b.slice(0, 25)} ${i++}`; usados.add(x); return x }
+  // Resumo
+  const resumoLinhas = [[rel.titulo], [textoFiltros()], [`Gerado em ${new Date().toLocaleString('pt-BR')} por ${SESSAO ? SESSAO.email : ''}`], []]
+  const juntarKpis = (bl, prefixo = '') => bl.forEach(b => {
+    if (b.tipo === 'kpis') b.itens.forEach(k => resumoLinhas.push([prefixo + k.rot, String(k.val).replace(/<[^>]+>/g, ''), String(k.sub || '').replace(/<[^>]+>/g, '')]))
+    if (b.tipo === 'lado') b.colunas.forEach(c => juntarKpis(c.blocos, c.titulo.replace(/<[^>]+>/g, '') + ' · '))
+    if (b.tipo === 'notas') { resumoLinhas.push([]); resumoLinhas.push([b.titulo || 'Observações']); b.itens.forEach(n => resumoLinhas.push([n.txt.replace(/<[^>]+>/g, '')])) }
+  })
+  juntarKpis(rel.blocos)
+  const wsR = XLSX.utils.aoa_to_sheet(resumoLinhas)
+  wsR['!cols'] = [{ wch: 48 }, { wch: 22 }, { wch: 40 }]
+  XLSX.utils.book_append_sheet(wb, wsR, nomeAba('Resumo'))
+  // Tabelas
+  const tabelas = []
+  const coletar = bl => bl.forEach(b => { if (b.tipo === 'tabela') tabelas.push(b); if (b.tipo === 'lado') b.colunas.forEach(c => coletar(c.blocos)) })
+  coletar(rel.blocos)
+  tabelas.forEach(t => {
+    const cab = t.colunas.flatMap(c => c.tipo === 'ic' ? [c.rot + ' (mín)', c.rot + ' (máx)'] : [c.rot])
+    const linhaX = l => l.flatMap((v, i) => {
+      const c = t.colunas[i]
+      if (c.tipo === 'ic') return v && v[0] !== null ? [v[0], v[1]] : ['', '']
+      if (c.tipo === 'html') return [String(v ?? '').replace(/<[^>]+>/g, '')]
+      return [v === null || v === undefined ? '' : v]
+    })
+    const dados = [cab, ...t.linhas.map(linhaX), ...(t.total ? [linhaX(t.total)] : [])]
+    const ws = XLSX.utils.aoa_to_sheet(dados)
+    // formatos numéricos
+    const tiposX = t.colunas.flatMap(c => c.tipo === 'ic' ? ['pct', 'pct'] : [c.tipo])
+    for (let r = 1; r < dados.length; r++) tiposX.forEach((tp, cIdx) => {
+      const ref = XLSX.utils.encode_cell({ r, c: cIdx }), cel = ws[ref]
+      if (cel && typeof cel.v === 'number' && FORMATO_XLSX[tp]) cel.z = FORMATO_XLSX[tp]
+    })
+    ws['!cols'] = cab.map((h, i) => ({ wch: Math.min(48, Math.max(String(h).length + 2, ...dados.slice(1).map(l => String(l[i] ?? '').length + 2), 9)) }))
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: dados.length - 1, c: cab.length - 1 } }) }
+    XLSX.utils.book_append_sheet(wb, ws, nomeAba(t.aba || t.titulo))
+  })
+  // Dados brutos filtrados (para quem quiser montar a própria análise)
+  if (incluirDados) {
+    const linhas = sistemasAtivos().flatMap(sis => filtrar(sis).map(r => ({
+      'Sistema': SIS[sis].nome, 'Código': r.codigo, 'Cliente': r.cliente, 'Linha': r.linha,
+      'Responsável/Analista': r.resp, 'Estagiário': r.estag || '', 'Etapa': r.etapa,
+      'Situação': situacaoDe(r), 'Valor (R$)': r.valor, 'Data de Cadastro': r.cad ? paraData(r.cad) : '',
+      'Na Etapa Desde': r.nae ? paraData(r.nae) : '', 'Dias até a decisão': r.leadTime ?? '', 'Dias parada': r.diasParado ?? '',
+      'Município': r.municipio, 'Transferência': r.transferencia ? 'Sim' : '', 'Arquivada': r.arquivada ? 'Sim' : '',
+    })))
+    const ws = XLSX.utils.json_to_sheet(linhas, { cellDates: true })
+    const cab = Object.keys(linhas[0] || {})
+    for (let r = 1; r <= linhas.length; r++) cab.forEach((h, c) => {
+      const cel = ws[XLSX.utils.encode_cell({ r, c })]
+      if (!cel) return
+      if (h === 'Valor (R$)') cel.z = '"R$" #,##0.00'
+      if (h.startsWith('Data') || h === 'Na Etapa Desde') cel.z = 'dd/mm/yyyy'
+    })
+    ws['!cols'] = cab.map(h => ({ wch: Math.max(h.length + 2, ['Cliente'].includes(h) ? 40 : 14) }))
+    if (linhas.length) ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: linhas.length, c: cab.length - 1 } }) }
+    XLSX.utils.book_append_sheet(wb, ws, nomeAba('Dados filtrados'))
+  }
+  const nomeArq = `${rel.titulo.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '_')}_${hojeIso()}.xlsx`
+  XLSX.writeFile(wb, nomeArq)
+  toast('✓ Excel gerado')
+}
+
+// ════════════ RELATÓRIOS ════════════
+const corSis = s => SIS[s].cor
+const tituloSis = s => `<span class="chip-sis chip-${s}">${SIS[s].curto.toUpperCase()}</span> ${SIS[s].nome}`
+
+function kpisDe(sis, r) {
+  const c = corSis(sis)
+  return { tipo: 'kpis', itens: [
+    { rot: 'Propostas', val: fmtInt(r.total), sub: fmtBRLk(r.valorTotal) + ' pedidos', cor: c },
+    { rot: 'Em andamento', val: fmtInt(r.ativas), sub: fmtBRLk(r.valorAtivas), cor: c },
+    { rot: 'Concedidas', val: fmtInt(r.conc), sub: fmtBRLk(r.valorConc), cor: '#15803D' },
+    { rot: 'Recusadas + Excluídas', val: fmtInt(r.nao), sub: fmtBRLk(r.valorNao), cor: '#B91C1C' },
+    { rot: 'Conversão (qtd)', val: fmtPct(r.convQtd), sub: r.decididas ? `IC 95%: ${fmtPct(r.ic[0], 0)} a ${fmtPct(r.ic[1], 0)} · ${fmtInt(r.decididas)} decididas` : 'sem decididas', cor: c },
+    { rot: 'Conversão (valor)', val: fmtPct(r.convValor), sub: 'R$ concedido ÷ R$ decidido', cor: c },
+    { rot: 'Ticket médio concedido', val: r.ticketConc ? fmtBRLk(r.ticketConc) : '—', sub: 'pedido médio ' + (r.ticketPedido ? fmtBRLk(r.ticketPedido) : '—'), cor: c },
+    { rot: 'Cadastro → concessão', val: fmtDias(r.leadMediana), sub: r.leadP25 !== null ? `mediana · metade entre ${Math.round(r.leadP25)} e ${Math.round(r.leadP75)} d` : 'mediana', cor: c },
+    { rot: `Paradas há +${DIAS_PARADA} dias`, val: fmtInt(r.paradas), sub: r.ativas ? fmtPct(r.paradas / r.ativas, 0) + ' das em andamento' : '', cor: r.paradas ? '#D97706' : c },
+  ]}
+}
+
+// Semanas (segunda a domingo) e meses
+function semanas(n) {
+  const h = new Date(); h.setHours(12, 0, 0, 0)
+  const seg = new Date(h); seg.setDate(h.getDate() - ((h.getDay() + 6) % 7))
+  const out = []
+  for (let i = n; i >= 0; i--) {
+    const ini = new Date(seg); ini.setDate(seg.getDate() - 7 * i)
+    const fim = new Date(ini); fim.setDate(ini.getDate() + 6)
+    out.push({ ini: isoDia(ini), fim: isoDia(fim), rot: ini.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), atual: i === 0 })
+  }
+  return out
+}
+function mesesDaBase() {
+  const ini = FILTRO.ini || INICIO_BASE, fim = FILTRO.fim || hojeIso()
+  const out = []
+  let d = new Date(ini.slice(0, 7) + '-01T12:00:00')
+  const f = new Date(fim.slice(0, 7) + '-01T12:00:00')
+  while (d <= f && out.length < 60) { out.push(isoDia(d).slice(0, 7)); d.setMonth(d.getMonth() + 1) }
+  return out
+}
+
+// ── VISÃO GERAL ──
+function relVisao() {
+  const sists = sistemasAtivos()
+  const blocos = []
+  const res = {}
+  sists.forEach(s => { res[s] = resumo(filtrar(s)) })
+  if (sists.length === 2) blocos.push({ tipo: 'lado', colunas: sists.map(s => ({ titulo: tituloSis(s), blocos: [kpisDe(s, res[s])] })) })
+  else blocos.push({ ...kpisDe(sists[0], res[sists[0]]), titulo: SIS[sists[0]].nome })
+
+  // Propostas novas por semana (8 semanas completas + atual) com tendência do total
+  const sem = semanas(8)
+  const series = sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: sem.map(w => filtrar(s, { semPeriodo: true }).filter(r => r.cad && r.cad >= w.ini && r.cad <= w.fim).length) }))
+  const totais = sem.map((_, i) => soma(series.map(x => x.valores[i])))
+  const completas = totais.slice(0, -1), reg = regressao(completas)
+  const tend = sem.map((_, i) => reg.prever(i))
+  const ultima = completas[completas.length - 1], penult = completas[completas.length - 2]
+  blocos.push({ tipo: 'grafico', titulo: 'Propostas novas por semana',
+    sub: `Últimas 8 semanas completas + semana atual (mais clara). Semana passada: <b>${ultima}</b> (${ultima >= penult ? '▲' : '▼'} ${Math.abs(ultima - penult)} vs. anterior) · média ${fmtNum(media(completas))} · tendência ${reg.b >= 0 ? '+' : ''}${fmtNum(reg.b)} por semana · previsão desta semana: <b>${Math.round(reg.prever(completas.length))}</b>. Esse gráfico ignora o período do filtro.`,
+    svg: gBarras({ categorias: sem.map(w => w.rot), series, tendencia: { valores: tend, cor: '#0f172a' }, destacarUltima: true }),
+    legenda: [...series.map(s => ({ cor: s.cor, rot: s.nome })), { cor: '#0f172a', rot: 'tendência (regressão linear do total)', tracejado: true }] })
+
+  // Carteira em andamento por fase
+  blocos.push({ tipo: 'grafico', titulo: 'Onde estão as propostas em andamento',
+    sub: 'Quantidade por fase. As fases agrupam etapas parecidas para comparar os dois sistemas.',
+    svg: gBarras({ categorias: FASES, series: sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: FASES.map(f => filtrar(s).filter(r => !r.final && r.fase === f).length) })), altura: 230 }),
+    legenda: sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })) })
+
+  blocos.push({ tipo: 'notas', titulo: 'O que chama atenção', itens: notasAutomaticas(sists, res) })
+  return { titulo: 'Visão Geral', blocos }
+}
+
+function notasAutomaticas(sists, res) {
+  const n = []
+  sists.forEach(s => {
+    const r = res[s]
+    if (r.decididas && r.decididas < 30) n.push({ ico: '⚠️', txt: `<b>${SIS[s].nome}:</b> só ${r.decididas} propostas decididas no período — percentuais oscilam muito com amostra pequena. Veja o intervalo de confiança.` })
+    if (r.ativas && r.paradas / r.ativas > 0.25) n.push({ ico: '⏳', txt: `<b>${SIS[s].nome}:</b> ${fmtPct(r.paradas / r.ativas, 0)} das em andamento estão paradas há mais de ${DIAS_PARADA} dias (${r.paradas} propostas). Veja o relatório de Gargalos.` })
+    if (r.convQtd !== null && r.convValor !== null && Math.abs(r.convQtd - r.convValor) > 0.08)
+      n.push({ ico: '💡', txt: `<b>${SIS[s].nome}:</b> a conversão por valor (${fmtPct(r.convValor)}) é ${r.convValor > r.convQtd ? 'maior' : 'menor'} que por quantidade (${fmtPct(r.convQtd)}) — os pedidos ${r.convValor > r.convQtd ? 'maiores são aprovados com mais frequência' : 'maiores são recusados com mais frequência'}.` })
+  })
+  if (sists.length === 2) {
+    const a = res.micro, b = res.fgf
+    const t = testeDuasProporcoes(a.conc, a.decididas, b.conc, b.decididas)
+    if (t) n.push({ ico: '📐', txt: `Conversão: Microcrédito ${fmtPct(a.convQtd)} × Giro Fácil ${fmtPct(b.convQtd)} (diferença de ${fmtNum(Math.abs(t.dif) * 100)} p.p.). ${t.p < 0.05 ? `<b>A diferença é estatisticamente significativa</b> (p = ${t.p < 0.001 ? '< 0,001' : fmtNum(t.p, 3)}).` : `A diferença <b>não é estatisticamente significativa</b> (p = ${fmtNum(t.p, 2)}) — pode ser acaso.`}` })
+    if (a.leadMediana !== null && b.leadMediana !== null) n.push({ ico: '⏱️', txt: `Tempo mediano do cadastro à concessão: Microcrédito <b>${fmtDias(a.leadMediana)}</b> × Giro Fácil <b>${fmtDias(b.leadMediana)}</b>.` })
+  }
+  if (!n.length) n.push({ ico: '✅', txt: 'Nenhum ponto fora do normal nos filtros atuais.' })
+  return n
+}
+
+// ── 1. PRODUÇÃO POR COLABORADOR ──
+function relProducao() {
+  const linhas = []
+  const ativasSis = {}
+  sistemasAtivos().forEach(sis => {
+    const lista = filtrar(sis)
+    ativasSis[sis] = lista.filter(r => !r.final).length
+    const papeis = sis === 'micro' ? [['resp', 'Responsável']] : [['resp', 'Analista'], ['estag', 'Estagiário']]
+    papeis.forEach(([campo, papel]) => {
+      const grupos = {}
+      lista.forEach(r => { const p = r[campo] || 'N/A'; (grupos[p] = grupos[p] || []).push(r) })
+      Object.entries(grupos).forEach(([pessoa, l]) => {
+        const r = resumo(l)
+        linhas.push({ sis, pessoa, papel, r })
+      })
+    })
+  })
+  linhas.sort((a, b) => a.sis.localeCompare(b.sis) || a.papel.localeCompare(b.papel) || (a.pessoa === 'N/A') - (b.pessoa === 'N/A') || b.r.valorConc - a.r.valorConc)
+  const tabela = {
+    tipo: 'tabela', titulo: 'Produção por colaborador', aba: 'Produção',
+    sub: 'Conversão = concedidas ÷ decididas. O intervalo de confiança (IC 95%) mostra a margem de incerteza: quanto menos propostas decididas, mais largo.',
+    colunas: [
+      { rot: 'Sistema', tipo: 'txt' }, { rot: 'Pessoa', tipo: 'txt' }, { rot: 'Papel', tipo: 'txt' },
+      { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: '% da carteira ativa', tipo: 'pct' },
+      { rot: 'Paradas +30d', tipo: 'int' }, { rot: 'Concedidas', tipo: 'int' }, { rot: 'Rec + Exc', tipo: 'int' },
+      { rot: 'Conversão (qtd)', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Conversão (valor)', tipo: 'pct' },
+      { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Ticket médio', tipo: 'brl' }, { rot: 'Cadastro→concessão (mediana)', tipo: 'dias' },
+    ],
+    linhas: linhas.map(({ sis, pessoa, papel, r }) => [SIS[sis].curto, pessoa, papel, r.total, r.ativas, ativasSis[sis] ? r.ativas / ativasSis[sis] : null,
+      r.paradas, r.conc, r.nao, r.convQtd, r.ic, r.convValor, r.valorConc, r.ticketConc, r.leadMediana]),
+  }
+  // Destaques com amostra mínima
+  const confiaveis = linhas.filter(l => l.pessoa !== 'N/A' && l.r.decididas >= 15)
+  const notas = []
+  if (confiaveis.length >= 2) {
+    const melhor = [...confiaveis].sort((a, b) => b.r.ic[0] - a.r.ic[0])[0]
+    notas.push({ ico: '🏆', txt: `Maior conversão com segurança estatística: <b>${melhor.pessoa}</b> (${SIS[melhor.sis].curto}, ${melhor.papel}) — ${fmtPct(melhor.r.convQtd)} em ${melhor.r.decididas} decididas; mesmo no pior cenário do IC, fica em ${fmtPct(melhor.r.ic[0], 0)}.` })
+    const maisValor = [...confiaveis].sort((a, b) => b.r.valorConc - a.r.valorConc)[0]
+    notas.push({ ico: '💰', txt: `Maior valor concedido: <b>${maisValor.pessoa}</b> (${SIS[maisValor.sis].curto}) com ${fmtBRL(maisValor.r.valorConc)}.` })
+  }
+  const pesadas = linhas.filter(l => l.pessoa !== 'N/A' && l.r.ativas >= 5 && l.r.paradas / l.r.ativas >= 0.4)
+    .sort((a, b) => b.r.paradas / b.r.ativas - a.r.paradas / a.r.ativas).slice(0, 5)
+  pesadas.forEach(l => notas.push({ ico: '⏳', txt: `<b>${l.pessoa}</b> (${SIS[l.sis].curto}): ${l.r.paradas} de ${l.r.ativas} propostas em andamento paradas há +${DIAS_PARADA} dias.` }))
+  const semDono = linhas.filter(l => l.pessoa === 'N/A' && l.r.ativas)
+  semDono.forEach(l => notas.push({ ico: '🆕', txt: `${SIS[l.sis].nome}: <b>${l.r.ativas}</b> propostas em andamento sem ${l.papel.toLowerCase()} — dá para atribuir na aba Redistribuir.` }))
+  if (!notas.length) notas.push({ ico: '•', txt: 'Ninguém com ao menos 15 propostas decididas no período — amplie o período para comparar com segurança.' })
+
+  const top = linhas.filter(l => l.pessoa !== 'N/A' && l.r.valorConc > 0).sort((a, b) => b.r.valorConc - a.r.valorConc).slice(0, 15)
+  return { titulo: 'Produção por colaborador', blocos: [
+    tabela,
+    { tipo: 'notas', titulo: 'Leitura', itens: notas },
+    { tipo: 'grafico', titulo: 'Valor concedido por pessoa', svg: gBarrasH({ itens: top.map(l => ({ rot: `${l.pessoa} · ${SIS[l.sis].curto}`, val: l.r.valorConc, cor: corSis(l.sis), extra: `${l.r.conc} conc.` })), formato: fmtBRLk }), legenda: sistemasAtivos().map(s => ({ cor: corSis(s), rot: SIS[s].nome })) },
+  ]}
+}
+
+// ── 2. COMPARATIVO MICRO × GIRO FÁCIL ──
+function relComparativo() {
+  const a = resumo(filtrar('micro')), b = resumo(filtrar('fgf'))
+  const lin = (rot, va, vb, tipo, maiorMelhor = true) => {
+    const dif = (va === null || vb === null) ? null : va - vb
+    return [rot, va, vb, dif, tipo, maiorMelhor]
+  }
+  const met = [
+    lin('Propostas', a.total, b.total, 'int'), lin('Em andamento', a.ativas, b.ativas, 'int'),
+    lin('Concedidas', a.conc, b.conc, 'int'), lin('Recusadas + Excluídas', a.nao, b.nao, 'int', false),
+    lin('Conversão (quantidade)', a.convQtd, b.convQtd, 'pct'), lin('Conversão (valor)', a.convValor, b.convValor, 'pct'),
+    lin('Valor pedido', a.valorTotal, b.valorTotal, 'brl'), lin('Valor concedido', a.valorConc, b.valorConc, 'brl'),
+    lin('Pedido médio', a.ticketPedido, b.ticketPedido, 'brl'), lin('Ticket médio concedido', a.ticketConc, b.ticketConc, 'brl'),
+    lin('Cadastro → concessão (mediana)', a.leadMediana, b.leadMediana, 'dias', false),
+    lin('Mediana de dias parada (em andamento)', a.paradoMediana, b.paradoMediana, 'dias', false),
+    lin(`Paradas há +${DIAS_PARADA} dias`, a.paradas, b.paradas, 'int', false),
+  ]
+  const fmtT = (v, t) => v === null ? '—' : t === 'pct' ? fmtPct(v) : t === 'brl' ? fmtBRL(v) : t === 'dias' ? fmtDias(v) : fmtInt(v)
+  const fmtDif = (d, t) => d === null ? '—' : (d > 0 ? '+' : '') + (t === 'pct' ? fmtNum(d * 100) + ' p.p.' : t === 'brl' ? fmtBRL(d) : t === 'dias' ? Math.round(d) + ' d' : fmtInt(d))
+  const tabela = { tipo: 'tabela', titulo: 'Indicadores lado a lado', aba: 'Comparativo', sub: 'Diferença = Microcrédito − Giro Fácil.',
+    colunas: [{ rot: 'Indicador', tipo: 'txt' }, { rot: 'Microcrédito', tipo: 'html' }, { rot: 'Giro Fácil', tipo: 'html' }, { rot: 'Diferença', tipo: 'html' }],
+    linhas: met.map(([rot, va, vb, d, t]) => [rot, fmtT(va, t), fmtT(vb, t), fmtDif(d, t)]) }
+  const t = testeDuasProporcoes(a.conc, a.decididas, b.conc, b.decididas)
+  const notas = [{ ico: '📐', txt: t ? `Teste de diferença de proporções (conversão): z = ${fmtNum(t.z, 2)}, p ${t.p < 0.001 ? '< 0,001' : '= ' + fmtNum(t.p, 3)}. ${t.p < 0.05 ? '<b>Há diferença real</b> entre os sistemas, não é acaso.' : 'A diferença <b>pode ser acaso</b> com a quantidade de propostas atual.'}` : 'Sem propostas decididas suficientes para testar.' },
+    { ico: 'ℹ️', txt: 'Os produtos são diferentes (valores e público): compare taxas e prazos, não o volume absoluto.' }]
+  // Mensal
+  const meses = mesesDaBase()
+  const porMes = (sis, f) => meses.map(m => filtrar(sis).filter(r => r.cad && r.cad.slice(0, 7) === m && f(r)).length)
+  const convSafra = sis => meses.map(m => { const l = filtrar(sis).filter(r => r.cad && r.cad.slice(0, 7) === m), c = l.filter(r => r.final === 'conc').length, d = l.filter(r => r.final).length; return d >= 5 ? c / d : null })
+  return { titulo: 'Comparativo Microcrédito × Giro Fácil', blocos: [
+    tabela, { tipo: 'notas', titulo: 'Leitura', itens: notas },
+    { tipo: 'grafico', titulo: 'Propostas cadastradas por mês', svg: gBarras({ categorias: meses.map(rotMes), series: [{ nome: 'Microcrédito', cor: corSis('micro'), valores: porMes('micro', () => true) }, { nome: 'Giro Fácil', cor: corSis('fgf'), valores: porMes('fgf', () => true) }] }), legenda: [{ cor: corSis('micro'), rot: 'Microcrédito' }, { cor: corSis('fgf'), rot: 'Giro Fácil' }] },
+    { tipo: 'grafico', titulo: 'Conversão da safra (por mês de cadastro)', sub: 'Das propostas cadastradas em cada mês e já decididas, quantas foram concedidas. Meses com menos de 5 decididas ficam em branco. Meses recentes ainda estão "amadurecendo".',
+      svg: gLinhas({ categorias: meses.map(rotMes), series: [{ nome: 'Microcrédito', cor: corSis('micro'), valores: convSafra('micro') }, { nome: 'Giro Fácil', cor: corSis('fgf'), valores: convSafra('fgf') }], formato: v => fmtPct(v, 0), max: 1 }),
+      legenda: [{ cor: corSis('micro'), rot: 'Microcrédito' }, { cor: corSis('fgf'), rot: 'Giro Fácil' }] },
+  ]}
+}
+
+// ── 3. EVOLUÇÃO MENSAL E SEMANAL ──
+function relEvolucao() {
+  const sists = sistemasAtivos()
+  const meses = mesesDaBase()
+  const todos = sists.flatMap(s => filtrar(s))
+  const linhas = meses.map(m => {
+    const cad = todos.filter(r => r.cad && r.cad.slice(0, 7) === m)
+    const decNoMes = todos.filter(r => r.final && r.nae && r.nae.slice(0, 7) === m)
+    const concNoMes = decNoMes.filter(r => r.final === 'conc')
+    const safraDec = cad.filter(r => r.final), safraConc = safraDec.filter(r => r.final === 'conc')
+    return { m, cad: cad.length, valorPedido: soma(cad.map(r => r.valor)), conc: concNoMes.length, nao: decNoMes.length - concNoMes.length,
+      valorConc: soma(concNoMes.map(r => r.valor)), convSafra: safraDec.length ? safraConc.length / safraDec.length : null,
+      maturidade: cad.length ? safraDec.length / cad.length : null }
+  })
+  const cadSerie = linhas.map(l => l.cad)
+  const mm = mediaMovel(cadSerie, 3)
+  // tendência só com meses completos
+  const completos = linhas.filter(l => l.m < hojeIso().slice(0, 7))
+  const reg = regressao(completos.map(l => l.cad))
+  const proj = Math.round(reg.prever(completos.length))
+  const tabela = { tipo: 'tabela', titulo: 'Mês a mês', aba: 'Evolução mensal',
+    sub: 'Cadastradas = pela data de cadastro. Concedidas e recusadas = pelo mês em que foram decididas. Conversão da safra = das cadastradas no mês e já decididas, % concedidas. Maturidade = % da safra que já foi decidida.',
+    colunas: [{ rot: 'Mês', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: 'Média móvel 3m', tipo: 'num' }, { rot: 'Valor pedido', tipo: 'brl' },
+      { rot: 'Concedidas no mês', tipo: 'int' }, { rot: 'Rec + Exc no mês', tipo: 'int' }, { rot: 'Valor concedido', tipo: 'brl' },
+      { rot: 'Conversão da safra', tipo: 'pct' }, { rot: 'Maturidade', tipo: 'pct' }],
+    linhas: linhas.map((l, i) => [rotMes(l.m), l.cad, mm[i], l.valorPedido, l.conc, l.nao, l.valorConc, l.convSafra, l.maturidade]),
+    total: ['Total', soma(cadSerie), '', soma(linhas.map(l => l.valorPedido)), soma(linhas.map(l => l.conc)), soma(linhas.map(l => l.nao)), soma(linhas.map(l => l.valorConc)), '', ''] }
+  const notas = [
+    { ico: '📈', txt: `Tendência dos cadastros (regressão linear dos meses completos): <b>${reg.b >= 0 ? '+' : ''}${fmtNum(reg.b)} propostas por mês</b> · R² = ${fmtNum(reg.r2, 2)} ${reg.r2 < 0.3 ? '(tendência fraca — o volume oscila mais do que cresce ou cai)' : reg.r2 < 0.6 ? '(tendência moderada)' : '(tendência forte)'}.` },
+    { ico: '🔮', txt: `Projeção para o mês ${completos.length < linhas.length ? 'atual' : 'seguinte'}: <b>~${proj} cadastros</b>${completos.length < linhas.length ? ` (até agora: ${linhas[linhas.length - 1].cad})` : ''}. É uma referência, não uma meta — feriados e campanhas mudam o número.` },
+  ]
+  const maturos = linhas.filter(l => l.maturidade !== null && l.maturidade < 0.7 && l.cad >= 5)
+  if (maturos.length) notas.push({ ico: '⚠️', txt: `Safras ainda imaturas (menos de 70% decididas): ${maturos.map(l => rotMes(l.m)).join(', ')}. A conversão delas ainda vai mudar.` })
+  // Semanal
+  const sem = semanas(12)
+  const series = sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: sem.map(w => filtrar(s, { semPeriodo: true }).filter(r => r.cad && r.cad >= w.ini && r.cad <= w.fim).length) }))
+  const totS = sem.map((_, i) => soma(series.map(x => x.valores[i])))
+  const regS = regressao(totS.slice(0, -1))
+  return { titulo: 'Evolução mensal e semanal', blocos: [
+    { tipo: 'grafico', titulo: 'Cadastros por mês', sub: 'Barras = cadastros · linha tracejada = média móvel de 3 meses.',
+      svg: gBarras({ categorias: meses.map(rotMes), series: sists.map(s => ({ nome: SIS[s].nome, cor: corSis(s), valores: meses.map(m => filtrar(s).filter(r => r.cad && r.cad.slice(0, 7) === m).length) })), tendencia: { valores: mm.map(v => v === null ? null : v / (sists.length === 2 ? 1 : 1)), cor: '#0f172a' }, destacarUltima: completos.length < linhas.length }),
+      legenda: [...sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })), { cor: '#0f172a', rot: 'média móvel 3 meses (total)', tracejado: true }] },
+    tabela, { tipo: 'notas', titulo: 'Leitura estatística', itens: notas },
+    { tipo: 'grafico', titulo: 'Cadastros por semana (12 semanas)', quebra: true, sub: `Tendência semanal: ${regS.b >= 0 ? '+' : ''}${fmtNum(regS.b)} por semana · previsão desta semana: ${Math.round(regS.prever(totS.length - 1))}. Ignora o período do filtro.`,
+      svg: gBarras({ categorias: sem.map(w => w.rot), series, tendencia: { valores: sem.map((_, i) => regS.prever(i)), cor: '#0f172a' }, destacarUltima: true }),
+      legenda: [...series.map(s => ({ cor: s.cor, rot: s.nome })), { cor: '#0f172a', rot: 'tendência', tracejado: true }] },
+  ]}
+}
+
+// ── 4. GARGALOS E TEMPO POR ETAPA ──
+function relGargalos() {
+  const sists = sistemasAtivos()
+  const linhas = []
+  sists.forEach(s => {
+    const ativas = filtrar(s).filter(r => !r.final && r.diasParado !== null)
+    const grupos = {}
+    ativas.forEach(r => { const e = etapaLimpa(r.etapa); (grupos[e] = grupos[e] || []).push(r) })
+    Object.entries(grupos).forEach(([etapa, l]) => {
+      const d = l.map(r => r.diasParado)
+      linhas.push({ s, etapa, fase: l[0].fase, n: l.length, med: mediana(d), media: media(d), p90: quantil(d, .9), max: Math.max(...d), mais30: d.filter(x => x > DIAS_PARADA).length, valor: soma(l.map(r => r.valor)) })
+    })
+  })
+  linhas.sort((a, b) => b.med * b.n - a.med * a.n)
+  const tEtapas = { tipo: 'tabela', titulo: 'Tempo parado por etapa (propostas em andamento)', aba: 'Gargalos por etapa',
+    sub: 'Dias desde que a proposta entrou na etapa atual. Mediana = metade das propostas está acima disso. P90 = 10% estão acima disso. Ordenado pelo "peso" do gargalo (mediana × quantidade).',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Etapa', tipo: 'txt' }, { rot: 'Fase', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' },
+      { rot: 'Mediana', tipo: 'dias' }, { rot: 'Média', tipo: 'dias' }, { rot: 'P90', tipo: 'dias' }, { rot: 'Máximo', tipo: 'dias' },
+      { rot: `+${DIAS_PARADA} dias`, tipo: 'int' }, { rot: 'Valor parado', tipo: 'brl' }],
+    linhas: linhas.map(l => [SIS[l.s].curto, l.etapa, l.fase, l.n, l.med, l.media, l.p90, l.max, l.mais30, l.valor]) }
+  // por pessoa
+  const pess = []
+  sists.forEach(s => {
+    const g = {}
+    filtrar(s).filter(r => !r.final && r.diasParado !== null).forEach(r => { (g[r.resp] = g[r.resp] || []).push(r) })
+    Object.entries(g).forEach(([p, l]) => { const d = l.map(r => r.diasParado); pess.push([SIS[s].curto, p, l.length, mediana(d), d.filter(x => x > DIAS_PARADA).length, l.length ? d.filter(x => x > DIAS_PARADA).length / l.length : null]) })
+  })
+  pess.sort((a, b) => b[4] - a[4])
+  const tPess = { tipo: 'tabela', titulo: 'Paradas por responsável', aba: 'Paradas por pessoa', sub: sists.includes('fgf') ? 'No Giro Fácil conta o analista.' : '',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Mediana parada', tipo: 'dias' }, { rot: `+${DIAS_PARADA} dias`, tipo: 'int' }, { rot: '% paradas', tipo: 'pct' }],
+    linhas: pess }
+  const top = sists.flatMap(s => filtrar(s).filter(r => !r.final && r.diasParado !== null)).sort((a, b) => b.diasParado - a.diasParado).slice(0, 25)
+  const tTop = { tipo: 'tabela', titulo: 'As 25 propostas paradas há mais tempo', aba: 'Mais paradas',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Código', tipo: 'txt' }, { rot: 'Cliente', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, { rot: 'Etapa', tipo: 'txt' }, { rot: 'Na etapa desde', tipo: 'txt' }, { rot: 'Dias parada', tipo: 'int' }, { rot: 'Valor', tipo: 'brl' }],
+    linhas: top.map(r => [SIS[r.sis].curto, r.codigo, r.cliente || '—', r.resp, etapaLimpa(r.etapa), fmtData(r.nae), r.diasParado, r.valor]) }
+  const notas = []
+  if (linhas[0]) notas.push({ ico: '🚧', txt: `Maior gargalo: <b>${linhas[0].etapa}</b> (${SIS[linhas[0].s].curto}) — ${linhas[0].n} propostas, mediana de ${fmtDias(linhas[0].med)} parada${linhas[0].mais30 ? `, ${linhas[0].mais30} há mais de ${DIAS_PARADA} dias` : ''}.` })
+  const assim = linhas.filter(l => l.n >= 5 && l.media > l.med * 1.6)
+  if (assim.length) notas.push({ ico: '📊', txt: `Em ${assim.map(l => `<b>${l.etapa}</b>`).join(', ')} a média é bem maior que a mediana: a maioria anda, mas algumas poucas estão travadas há muito tempo e puxam a média. Vale olhar caso a caso.` })
+  if (!notas.length) notas.push({ ico: '✅', txt: 'Nenhum gargalo relevante nos filtros atuais.' })
+  return { titulo: 'Gargalos e tempo por etapa', blocos: [
+    { tipo: 'grafico', titulo: 'Mediana de dias parada por etapa', svg: gBarrasH({ itens: [...linhas].sort((a, b) => b.med - a.med).slice(0, 14).map(l => ({ rot: `${l.etapa} · ${SIS[l.s].curto}`, val: l.med, cor: corSis(l.s), extra: `${l.n} prop.` })), formato: v => fmtDias(v), larguraRot: 330 }), legenda: sists.map(s => ({ cor: corSis(s), rot: SIS[s].nome })) },
+    { tipo: 'notas', titulo: 'Leitura', itens: notas }, tEtapas, { ...tPess, quebra: true }, tTop,
+  ]}
+}
+
+// ── 5. ANÁLISES ESTATÍSTICAS ──
+function relEstatistico() {
+  const sists = sistemasAtivos()
+  const todos = sists.flatMap(s => filtrar(s))
+  const blocos = []
+  // Faixas de valor
+  const faixas = [[0, 5000, 'até R$ 5 mil'], [5000.01, 10000, 'R$ 5–10 mil'], [10000.01, 20000, 'R$ 10–20 mil'], [20000.01, 50000, 'R$ 20–50 mil'], [50000.01, 100000, 'R$ 50–100 mil'], [100000.01, 250000, 'R$ 100–250 mil'], [250000.01, Infinity, 'acima de R$ 250 mil']]
+  const linhasFx = []
+  sists.forEach(s => faixas.forEach(([a, b, rot]) => {
+    const l = filtrar(s).filter(r => r.valor >= a && r.valor <= b)
+    if (!l.length) return
+    const r = resumo(l)
+    linhasFx.push([SIS[s].curto, rot, r.total, r.decididas, r.convQtd, r.ic, r.leadMediana])
+  }))
+  blocos.push({ tipo: 'tabela', titulo: 'Conversão por faixa de valor pedido', aba: 'Faixas de valor',
+    sub: 'Mostra se pedidos maiores são mais ou menos aprovados. Faixas com IC muito largo têm poucas propostas: não tire conclusão delas.',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Faixa', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Conversão', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Cadastro→concessão', tipo: 'dias' }],
+    linhas: linhasFx })
+  // Por linha
+  const linhasL = []
+  sists.forEach(s => {
+    const g = {}
+    filtrar(s).forEach(r => { (g[r.linha] = g[r.linha] || []).push(r) })
+    Object.entries(g).forEach(([lin, l]) => { const r = resumo(l); linhasL.push([SIS[s].curto, lin, r.total, r.ativas, r.decididas, r.convQtd, r.ic, r.valorConc, r.ticketConc, r.leadMediana]) })
+  })
+  linhasL.sort((a, b) => b[2] - a[2])
+  blocos.push({ tipo: 'tabela', titulo: 'Desempenho por linha de crédito', aba: 'Por linha',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Linha', tipo: 'txt' }, { rot: 'Propostas', tipo: 'int' }, { rot: 'Em andamento', tipo: 'int' }, { rot: 'Decididas', tipo: 'int' }, { rot: 'Conversão', tipo: 'pct' }, { rot: 'IC 95%', tipo: 'ic' }, { rot: 'Valor concedido', tipo: 'brl' }, { rot: 'Ticket médio', tipo: 'brl' }, { rot: 'Cadastro→concessão', tipo: 'dias' }],
+    linhas: linhasL })
+  // Distribuição do tempo até a concessão
+  const leads = todos.filter(r => r.final === 'conc' && r.leadTime !== null).map(r => r.leadTime)
+  const hist = [[0, 7, 'até 7 dias'], [8, 15, '8 a 15'], [16, 30, '16 a 30'], [31, 60, '31 a 60'], [61, 90, '61 a 90'], [91, 180, '91 a 180'], [181, 99999, 'mais de 180']]
+  blocos.push({ tipo: 'grafico', titulo: 'Quanto tempo leva do cadastro à concessão', quebra: true,
+    sub: leads.length ? `${leads.length} concedidas · mediana ${fmtDias(mediana(leads))} · metade fica entre ${fmtDias(quantil(leads, .25))} e ${fmtDias(quantil(leads, .75))} · 90% saem em até ${fmtDias(quantil(leads, .9))}.` : 'Sem concedidas no período.',
+    svg: gBarrasH({ itens: hist.map(([a, b, rot]) => { const n = leads.filter(x => x >= a && x <= b).length; return { rot, val: n, cor: '#003366', extra: leads.length ? fmtPct(n / leads.length, 0) : '' } }) }) })
+  // Dia da semana dos cadastros
+  const dias = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+  const contDia = dias.map((_, i) => todos.filter(r => r.cad && paraData(r.cad).getDay() === i).length)
+  blocos.push({ tipo: 'grafico', titulo: 'Em que dia da semana as propostas são cadastradas',
+    svg: gBarrasH({ itens: dias.map((d, i) => ({ rot: d, val: contDia[i], cor: i === 0 || i === 6 ? '#94A3B8' : '#003366', extra: soma(contDia) ? fmtPct(contDia[i] / soma(contDia), 0) : '' })), larguraRot: 120 }) })
+  // Municípios — concentração (Pareto)
+  const mun = {}
+  todos.filter(r => r.final === 'conc').forEach(r => { const m = r.municipio || '(sem município)'; mun[m] = mun[m] || { n: 0, v: 0 }; mun[m].n++; mun[m].v += r.valor })
+  const ordem = Object.entries(mun).sort((a, b) => b[1].v - a[1].v)
+  const totV = soma(ordem.map(x => x[1].v))
+  let acum = 0
+  const linhasM = ordem.slice(0, 20).map(([m, x]) => { acum += x.v; return [m, x.n, x.v, totV ? x.v / totV : null, totV ? acum / totV : null] })
+  const n80 = (() => { let a = 0; for (let i = 0; i < ordem.length; i++) { a += ordem[i][1].v; if (a >= 0.8 * totV) return i + 1 } return ordem.length })()
+  blocos.push({ tipo: 'tabela', titulo: 'Onde o crédito concedido se concentra (municípios)', aba: 'Municípios', quebra: true,
+    sub: ordem.length ? `${ordem.length} municípios receberam crédito; <b>${n80}</b> deles (${fmtPct(n80 / ordem.length, 0)}) concentram 80% do valor concedido.` : '',
+    colunas: [{ rot: 'Município', tipo: 'txt' }, { rot: 'Concedidas', tipo: 'int' }, { rot: 'Valor concedido', tipo: 'brl' }, { rot: '% do valor', tipo: 'pct' }, { rot: '% acumulado', tipo: 'pct' }],
+    linhas: linhasM })
+  // Coortes de maturação
+  const meses = mesesDaBase()
+  const linhasC = []
+  sists.forEach(s => meses.forEach(m => {
+    const l = filtrar(s).filter(r => r.cad && r.cad.slice(0, 7) === m)
+    if (!l.length) return
+    const dec = l.filter(r => r.final), conc = l.filter(r => r.final === 'conc')
+    linhasC.push([SIS[s].curto, rotMes(m), l.length, dec.length / l.length, conc.length / l.length, dec.length ? conc.length / dec.length : null, mediana(conc.map(r => r.leadTime).filter(v => v !== null)), l.filter(r => !r.final).length])
+  }))
+  blocos.push({ tipo: 'tabela', titulo: 'Safras (coortes) por mês de cadastro', aba: 'Safras',
+    sub: 'Acompanha cada grupo de propostas cadastradas no mesmo mês: quanto já foi decidido e quanto virou concessão. Safras recentes ainda estão abertas.',
+    colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Safra', tipo: 'txt' }, { rot: 'Cadastradas', tipo: 'int' }, { rot: '% decididas', tipo: 'pct' }, { rot: '% concedidas (do total)', tipo: 'pct' }, { rot: 'Conversão (das decididas)', tipo: 'pct' }, { rot: 'Cadastro→concessão', tipo: 'dias' }, { rot: 'Ainda em andamento', tipo: 'int' }],
+    linhas: linhasC })
+  // Notas
+  const notas = []
+  const fxConf = linhasFx.filter(l => l[3] >= 15)
+  if (fxConf.length >= 2) {
+    const mx = fxConf.reduce((a, b) => (b[4] > a[4] ? b : a)), mn = fxConf.reduce((a, b) => (b[4] < a[4] ? b : a))
+    notas.push({ ico: '💡', txt: `Faixa com maior conversão: <b>${mx[1]}</b> (${mx[0]}, ${fmtPct(mx[4])}); menor: <b>${mn[1]}</b> (${mn[0]}, ${fmtPct(mn[4])}).` })
+  }
+  if (soma(contDia)) { const fds = (contDia[0] + contDia[6]) / soma(contDia); notas.push({ ico: '📅', txt: `${fmtPct(fds, 0)} dos cadastros caem no fim de semana — por isso a comparação semanal é mais estável que a diária.` }) }
+  if (ordem.length) notas.push({ ico: '🗺️', txt: `Concentração geográfica: os 3 maiores municípios somam ${fmtPct(soma(ordem.slice(0, 3).map(x => x[1].v)) / (totV || 1), 0)} do valor concedido.` })
+  blocos.unshift({ tipo: 'notas', titulo: 'Principais achados', itens: notas.length ? notas : [{ ico: '•', txt: 'Poucos dados no período para tirar conclusões.' }] })
+  return { titulo: 'Análises estatísticas', blocos }
+}
+
+// ── 6. CARTEIRA ATUAL (pessoa × fase) ──
+function relCarteira() {
+  const sists = sistemasAtivos()
+  const linhas = []
+  sists.forEach(s => {
+    const g = {}
+    filtrar(s, { semPeriodo: true }).filter(r => !r.final).forEach(r => { (g[r.resp] = g[r.resp] || []).push(r) })
+    Object.entries(g).sort((a, b) => b[1].length - a[1].length).forEach(([p, l]) =>
+      linhas.push([SIS[s].curto, p, ...FASES.map(f => l.filter(r => r.fase === f).length), l.length, soma(l.map(r => r.valor)), l.filter(r => r.diasParado > DIAS_PARADA).length]))
+  })
+  return { titulo: 'Carteira atual em andamento', sub: 'Todas as propostas em andamento hoje (ignora o período do filtro).', blocos: [
+    { tipo: 'tabela', titulo: 'Propostas em andamento por pessoa e fase', aba: 'Carteira', sub: 'No Giro Fácil conta o analista. Ignora o período do filtro: é a foto de hoje.',
+      colunas: [{ rot: 'Sistema', tipo: 'txt' }, { rot: 'Responsável', tipo: 'txt' }, ...FASES.map(f => ({ rot: f, tipo: 'int' })), { rot: 'Total', tipo: 'int' }, { rot: 'Valor', tipo: 'brl' }, { rot: `+${DIAS_PARADA}d`, tipo: 'int' }],
+      linhas,
+      total: ['', 'Total', ...FASES.map((_, i) => soma(linhas.map(l => l[2 + i]))), soma(linhas.map(l => l[2 + FASES.length])), soma(linhas.map(l => l[3 + FASES.length])), soma(linhas.map(l => l[4 + FASES.length]))] },
+  ]}
+}
+
+const RELATORIOS = [
+  { id: 'producao', nome: 'Produção por colaborador', desc: 'Volume, conversão com margem de erro, valor, prazo e paradas por pessoa', fn: relProducao },
+  { id: 'comparativo', nome: 'Microcrédito × Giro Fácil', desc: 'Indicadores lado a lado, teste estatístico e evolução mensal', fn: relComparativo },
+  { id: 'evolucao', nome: 'Evolução mensal e semanal', desc: 'Séries no tempo, média móvel, tendência e projeção', fn: relEvolucao },
+  { id: 'gargalos', nome: 'Gargalos e tempo por etapa', desc: 'Onde as propostas param, por quanto tempo e com quem', fn: relGargalos },
+  { id: 'estatistico', nome: 'Análises estatísticas', desc: 'Faixas de valor, linhas, prazos, dia da semana, municípios e safras', fn: relEstatistico },
+  { id: 'carteira', nome: 'Carteira atual', desc: 'Foto de hoje: em andamento por pessoa e fase', fn: relCarteira },
+]
+
+// ════════════ NAVEGAÇÃO ════════════
+let ABA = 'visao'
+let REL_ATUAL = 'producao'
+let ULTIMO_REL = null
+function irPara(aba) {
+  ABA = aba
+  document.querySelectorAll('.aba').forEach(b => b.classList.toggle('ativa', b.dataset.aba === aba))
+  renderFiltros(); renderAba()
+  window.scrollTo(0, 0)
+}
+function renderAba() {
+  const el = document.getElementById('conteudo')
+  try {
+    if (ABA === 'visao') {
+      const rel = relVisao(); ULTIMO_REL = rel
+      el.innerHTML = `<div class="card">${barraExport()}${htmlRelatorio(rel)}</div>`
+    } else if (ABA === 'relatorios') {
+      const def = RELATORIOS.find(r => r.id === REL_ATUAL)
+      const rel = def.fn(); ULTIMO_REL = rel
+      el.innerHTML = `<div class="rel-lista">${RELATORIOS.map(r => `<button class="rel-item ${r.id === REL_ATUAL ? 'on' : ''}" onclick="REL_ATUAL='${r.id}'; renderAba()"><b>${r.nome}</b><span>${r.desc}</span></button>`).join('')}</div>
+        <div class="card"><div class="card-titulo">${esc(rel.titulo)}</div><div class="card-sub">${rel.sub || esc(textoFiltros())}</div>${barraExport()}${htmlRelatorio(rel)}</div>`
+    } else if (ABA === 'colabs') renderColabs()
+    else if (ABA === 'linhas') renderLinhas()
+    else if (ABA === 'redistribuir') renderRedistribuir()
+    else if (ABA === 'log') renderLog()
+  } catch(e) {
+    console.error(e)
+    el.innerHTML = `<div class="alerta alerta-erro">Erro ao montar a tela: ${esc(e.message)}</div>`
+  }
+}
+function barraExport() {
+  return `<div style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn btn-sm" onclick="exportarExcel(ULTIMO_REL)">📊 Excel</button>
+    <button class="btn btn-sm" onclick="exportarPDF(ULTIMO_REL)">📄 PDF</button>
+  </div>`
+}
+async function recarregar() {
+  document.getElementById('conteudo').innerHTML = '<div class="carregando"><div class="spinner"></div>Atualizando...</div>'
+  try { await carregarTudo(); renderFiltros(); renderAba(); toast('✓ Dados atualizados') }
+  catch(e) { document.getElementById('conteudo').innerHTML = `<div class="alerta alerta-erro">Erro ao carregar: ${esc(e.message)}</div>` }
+}
+
+// ════════════ MODAL ════════════
+function abrirModal(html, largo) {
+  document.getElementById('modal-raiz').innerHTML = `<div class="modal-fundo" onclick="if(event.target===this) fecharModal()"><div class="modal ${largo ? 'largo' : ''}">${html}</div></div>`
+}
+function fecharModal() { document.getElementById('modal-raiz').innerHTML = '' }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal() })
+
+// ════════════ AÇÕES SOBRE PROPOSTAS (valem para os sistemas também) ════════════
+// campo: 'resp' (responsável do Micro / analista do Giro Fácil) ou 'estag' (estagiário do Giro Fácil)
+async function atribuir(sis, mapa, campo) {   // mapa: { codigo: novoNome }
+  const porNome = {}
+  Object.entries(mapa).forEach(([c, n]) => { (porNome[n] = porNome[n] || []).push(c) })
+  for (const [nome, cods] of Object.entries(porNome)) {
+    const corpo = campo === 'estag' ? { estagiario: nome } : { responsavel: nome, responsavel_final: nome }
+    await patchEmLotes(SIS[sis].tabela, cods, corpo)
+  }
+  await atualizarReferencia(sis, mapa, campo)
+  DADOS[sis].forEach(r => { if (mapa[r.codigo] !== undefined) { if (campo === 'estag') r.estag = mapa[r.codigo]; else r.resp = mapa[r.codigo] } })
+}
+// A planilha de referência do último processamento também é atualizada, para que
+// o próximo processamento não devolva o nome antigo a uma proposta.
+async function atualizarReferencia(sis, mapa, campo) {
+  try {
+    const refs = await api(`${SIS[sis].ref}?select=id,dados&order=criado_em.desc&limit=1`)
+    if (!refs || !refs[0] || !Array.isArray(refs[0].dados)) return
+    const chaveCampo = campo === 'estag' ? 'estagiario' : 'responsavel_final'
+    let mudou = false
+    const dados = refs[0].dados.map(d => {
+      const c = String(d.codigo || '').trim()
+      if (mapa[c] !== undefined) { mudou = true; return { ...d, [chaveCampo]: mapa[c] } }
+      return d
+    })
+    if (mudou) await api(`${SIS[sis].ref}?id=eq.${refs[0].id}`, { method: 'PATCH', prefer: 'return=minimal', body: { dados } })
+  } catch(e) { console.warn('referência não atualizada', e) }
+}
+function distribuirIgual(codigos, pessoas) {
+  const mapa = {}
+  ;[...codigos].sort().forEach((c, i) => { mapa[c] = pessoas[i % pessoas.length] })
+  return mapa
+}
+async function arquivarPropostas(sis, cods, arquivar = true) {
+  await patchEmLotes(SIS[sis].tabela, cods, { arquivada: arquivar })
+  const s = new Set(cods); DADOS[sis].forEach(r => { if (s.has(r.codigo)) r.arquivada = arquivar })
+}
+async function excluirPropostas(sis, cods) {
+  for (let i = 0; i < cods.length; i += 150) {
+    const lote = cods.slice(i, i + 150)
+    const copias = await api(`${SIS[sis].tabela}?select=*&${listaCodigos(lote)}`)
+    if (copias && copias.length) await api('backup_excluidas', { method: 'POST', prefer: 'return=minimal', body: copias.map(c => ({ codigo: (sis === 'fgf' ? 'FGF-' : '') + c.codigo, dados: c })) })
+    await api(`${SIS[sis].tabela}?${listaCodigos(lote)}`, { method: 'DELETE', prefer: 'return=minimal' })
+  }
+  const s = new Set(cods); DADOS[sis] = DADOS[sis].filter(r => !s.has(r.codigo))
+}
+async function moverLinha(sis, cods, novaLinha) {
+  await patchEmLotes(SIS[sis].tabela, cods, { linha_credito: novaLinha })
+  const s = new Set(cods); DADOS[sis].forEach(r => { if (s.has(r.codigo)) { r.linhaBruta = novaLinha; r.linha = linhaOficial(sis, novaLinha) } })
+}
+
+// ════════════ COLABORADORES ════════════
+let CAD_SIS = 'micro'
+const PAPEIS = { responsavel: 'Responsável', analista: 'Analista', estagiario: 'Estagiário' }
+const campoDoPapel = papel => papel === 'estagiario' ? 'estag' : 'resp'
+function propostasDaPessoa(sis, nome, papel) {
+  const campo = campoDoPapel(papel)
+  return DADOS[sis].filter(r => r[campo] === nome)
+}
+function seletorSistema(varNome, fn) {
+  const atual = varNome === 'CAD_SIS' ? CAD_SIS : LIN_SIS
+  return `<div class="seg">${['micro', 'fgf'].map(s => `<button class="${atual === s ? 'on' : ''}" onclick="${varNome}='${s}'; ${fn}()">${SIS[s].nome}</button>`).join('')}</div>`
+}
+function avisoConfig() {
+  return CFG.ok ? '' : `<div class="alerta alerta-aviso" style="margin-bottom:14px">As tabelas de configuração não foram encontradas. Rode o SQL <b>admin_config.sql</b> no Supabase e clique em Atualizar dados.</div>`
+}
+function renderColabs() {
+  const sis = CAD_SIS
+  const lista = CFG.colabs.filter(c => c.sistema === sis)
+  const ord = { true: 0, false: 1 }
+  lista.sort((a, b) => ord[a.ativo] - ord[b.ativo] || a.papel.localeCompare(b.papel) || a.ordem - b.ordem || a.nome.localeCompare(b.nome))
+  document.getElementById('conteudo').innerHTML = `<div class="card">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <div class="card-titulo" style="margin:0">👥 Colaboradores</div>${seletorSistema('CAD_SIS', 'renderColabs')}
+      <button class="btn btn-pri" style="margin-left:auto" onclick="modalNovoColab()" ${CFG.ok ? '' : 'disabled'}>+ Adicionar colaborador</button>
+    </div>
+    <div class="card-sub">Quem está <b>ativo</b> aparece nos botões e listas de atribuição do ${SIS[sis].nome}. Quem sai fica <b>inativo</b>: o nome continua nas propostas antigas (histórico), e você escolhe o destino das que estão em andamento.</div>
+    ${avisoConfig()}
+    <div class="tab-wrap"><table class="t"><thead><tr><th>Cor</th><th>Nome</th><th>Papel</th><th>Situação</th><th class="n">Em andamento</th><th class="n">Paradas +${DIAS_PARADA}d</th><th class="n">Total de propostas</th><th></th></tr></thead><tbody>
+    ${lista.map(c => {
+      const ps = propostasDaPessoa(sis, c.nome, c.papel)
+      const at = ps.filter(r => !r.final)
+      return `<tr>
+        <td><span class="bolinha" style="background:${esc(c.cor)};width:16px;height:16px"></span></td>
+        <td><b>${esc(c.nome)}</b></td><td>${PAPEIS[c.papel] || c.papel}</td>
+        <td>${c.ativo ? '<span class="tag tag-ok">Ativo</span>' : '<span class="tag tag-off">Inativo</span>'}</td>
+        <td class="n">${fmtInt(at.length)}</td><td class="n">${fmtInt(at.filter(r => r.diasParado > DIAS_PARADA).length)}</td><td class="n">${fmtInt(ps.length)}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-sm" onclick="modalEditarColab(${c.id})">Editar</button>
+          ${c.ativo ? `<button class="btn btn-sm" onclick="modalDesativarColab(${c.id})">Remover da equipe</button>`
+                    : `<button class="btn btn-sm" onclick="reativarColab(${c.id})">Reativar</button>`}
+          ${at.length ? `<button class="btn btn-sm" onclick="RED.sis='${sis}'; RED.pessoa='${esc(c.nome)}'; RED.campo='${campoDoPapel(c.papel)}'; irPara('redistribuir')">Redistribuir</button>` : ''}
+        </td></tr>`
+    }).join('') || `<tr><td colspan="8" class="vazio">Nenhum colaborador cadastrado.</td></tr>`}
+    </tbody></table></div>
+    ${semCadastro(sis)}
+  </div>`
+}
+// Nomes que aparecem nas propostas mas não estão cadastrados
+function semCadastro(sis) {
+  const conhecidos = new Set(CFG.colabs.filter(c => c.sistema === sis).map(c => c.nome))
+  const nomes = {}
+  DADOS[sis].forEach(r => [r.resp, r.estag].filter(Boolean).forEach(n => { if (n !== 'N/A' && !conhecidos.has(n)) nomes[n] = (nomes[n] || 0) + 1 }))
+  const l = Object.entries(nomes)
+  if (!l.length || !CFG.ok) return ''
+  return `<div class="alerta alerta-aviso" style="margin-top:14px">Nomes nas propostas que não estão no cadastro: ${l.map(([n, q]) => `<b>${esc(n)}</b> (${q})`).join(', ')}. Cadastre como inativo para manter o histórico organizado, ou redistribua as propostas.</div>`
+}
+function corLivre(sis) {
+  const usadas = new Set(CFG.colabs.filter(c => c.sistema === sis).map(c => c.cor.toUpperCase()))
+  return ['#4A90D9', '#E06C75', '#93C47D', '#F6B26B', '#C9A0DC', '#76C7B7', '#F4A460', '#8E9FD4', '#EA9999', '#6FA8DC', '#D5A6E6', '#F6D365'].find(c => !usadas.has(c)) || '#94A3B8'
+}
+function modalNovoColab() {
+  const sis = CAD_SIS
+  abrirModal(`<h3>Adicionar colaborador — ${SIS[sis].nome}</h3><div class="m-sub">O nome tem que ser escrito igual ao que vocês usam nas propostas (em maiúsculo).</div>
+    <div class="linha-form">
+      <div style="flex:1;min-width:200px"><label class="rot">Nome</label><input type="text" id="nc-nome" style="width:100%" placeholder="Ex: MARIA"></div>
+      ${sis === 'fgf' ? `<div><label class="rot">Papel</label><select id="nc-papel"><option value="analista">Analista</option><option value="estagiario">Estagiário</option></select></div>` : ''}
+      <div><label class="rot">Cor</label><input type="color" id="nc-cor" value="${corLivre(sis)}"></div>
+    </div>
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-pri" onclick="salvarNovoColab()">Adicionar</button></div>`)
+  setTimeout(() => document.getElementById('nc-nome').focus(), 50)
+}
+async function salvarNovoColab() {
+  const sis = CAD_SIS
+  const nome = document.getElementById('nc-nome').value.trim().toUpperCase()
+  const papel = sis === 'fgf' ? document.getElementById('nc-papel').value : 'responsavel'
+  const cor = document.getElementById('nc-cor').value
+  if (!nome) { toast('Digite o nome.', true); return }
+  if (nome === 'N/A') { toast('N/A é reservado para "sem responsável".', true); return }
+  const existe = CFG.colabs.find(c => c.sistema === sis && c.nome === nome)
+  if (existe) { toast(existe.ativo ? 'Esse nome já existe.' : 'Esse nome já existe como inativo — use Reativar.', true); return }
+  try {
+    const ordem = Math.max(0, ...CFG.colabs.filter(c => c.sistema === sis).map(c => c.ordem < 90 ? c.ordem : 0)) + 1
+    await api('config_colaboradores', { method: 'POST', prefer: 'return=minimal', body: { sistema: sis, nome, papel, cor, ativo: true, ordem } })
+    await registrarLog(sis, 'Colaborador adicionado', { nome, papel })
+    await carregarConfig(); fecharModal(); renderColabs()
+    toast(`✓ ${nome} adicionado. Ele aparece no ${SIS[sis].nome} na próxima vez que a página for aberta.`)
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+function modalEditarColab(id) {
+  const c = CFG.colabs.find(x => x.id === id); if (!c) return
+  const n = DADOS[c.sistema].filter(r => r[campoDoPapel(c.papel)] === c.nome).length
+  abrirModal(`<h3>Editar ${esc(c.nome)}</h3><div class="m-sub">${SIS[c.sistema].nome} · ${n} proposta(s) com esse nome</div>
+    <div class="linha-form">
+      <div style="flex:1;min-width:200px"><label class="rot">Nome</label><input type="text" id="ec-nome" style="width:100%" value="${esc(c.nome)}"></div>
+      ${c.sistema === 'fgf' ? `<div><label class="rot">Papel</label><select id="ec-papel"><option value="analista" ${c.papel === 'analista' ? 'selected' : ''}>Analista</option><option value="estagiario" ${c.papel === 'estagiario' ? 'selected' : ''}>Estagiário</option></select></div>` : ''}
+      <div><label class="rot">Ordem</label><input type="number" id="ec-ordem" value="${c.ordem}" style="width:80px"></div>
+      <div><label class="rot">Cor</label><input type="color" id="ec-cor" value="${esc(c.cor)}"></div>
+    </div>
+    <div class="alerta alerta-info" style="margin-top:12px">Se mudar o <b>nome</b>, as ${n} propostas com o nome antigo também são renomeadas.${c.sistema === 'fgf' ? ' Mudar o <b>papel</b> não move as propostas entre analista e estagiário.' : ''}</div>
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-pri" onclick="salvarEdicaoColab(${id})">Salvar</button></div>`)
+}
+async function salvarEdicaoColab(id) {
+  const c = CFG.colabs.find(x => x.id === id)
+  const nome = document.getElementById('ec-nome').value.trim().toUpperCase()
+  const papel = c.sistema === 'fgf' ? document.getElementById('ec-papel').value : c.papel
+  const cor = document.getElementById('ec-cor').value, ordem = parseInt(document.getElementById('ec-ordem').value, 10) || c.ordem
+  if (!nome || nome === 'N/A') { toast('Nome inválido.', true); return }
+  if (nome !== c.nome && CFG.colabs.find(x => x.sistema === c.sistema && x.nome === nome)) { toast('Já existe alguém com esse nome.', true); return }
+  try {
+    await api(`config_colaboradores?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { nome, papel, cor, ordem } })
+    if (nome !== c.nome) {
+      const campo = campoDoPapel(c.papel)
+      const cods = DADOS[c.sistema].filter(r => r[campo] === c.nome).map(r => r.codigo)
+      if (cods.length) await atribuir(c.sistema, Object.fromEntries(cods.map(x => [x, nome])), campo)
+    }
+    await registrarLog(c.sistema, 'Colaborador editado', { de: c.nome, para: nome, papel, cor })
+    await carregarConfig(); fecharModal(); renderColabs(); toast('✓ Salvo')
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+async function reativarColab(id) {
+  const c = CFG.colabs.find(x => x.id === id)
+  try {
+    await api(`config_colaboradores?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { ativo: true } })
+    await registrarLog(c.sistema, 'Colaborador reativado', { nome: c.nome })
+    await carregarConfig(); renderColabs(); toast(`✓ ${c.nome} voltou para a equipe`)
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+function opcaoDestino(valor, titulo, texto, extra = '', marcado = false) {
+  return `<label class="opcao-destino"><input type="radio" name="destino" value="${valor}" ${marcado ? 'checked' : ''}><div><b>${titulo}</b><span>${texto}</span>${extra}</div></label>`
+}
+function modalDesativarColab(id) {
+  const c = CFG.colabs.find(x => x.id === id); if (!c) return
+  const ps = propostasDaPessoa(c.sistema, c.nome, c.papel)
+  const at = ps.filter(r => !r.final), fin = ps.filter(r => r.final)
+  const colegas = CFG.colabs.filter(x => x.sistema === c.sistema && x.ativo && x.papel === c.papel && x.id !== c.id)
+  const papelTxt = (PAPEIS[c.papel] || '').toLowerCase()
+  abrirModal(`<h3>Remover ${esc(c.nome)} da equipe</h3>
+    <div class="m-sub">${SIS[c.sistema].nome} · ${at.length} em andamento · ${fin.length} finalizadas</div>
+    <p style="font-size:13px;margin-bottom:10px">Para onde vão as <b>${at.length} propostas em andamento</b>?</p>
+    ${opcaoDestino('transferir', 'Transferir todas para uma pessoa', 'Todas passam para o colega escolhido.',
+      `<div style="margin-top:6px"><select id="dc-para">${colegas.map(x => `<option>${esc(x.nome)}</option>`).join('')}</select></div>`, !!colegas.length)}
+    ${opcaoDestino('dividir', 'Dividir igualmente entre a equipe', 'Distribui em rodízio entre as pessoas marcadas.',
+      `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 12px">${colegas.map(x => `<label class="ms-opcao" style="padding:0"><input type="checkbox" class="dc-div" value="${esc(x.nome)}" checked> ${esc(x.nome)}</label>`).join('')}</div>`)}
+    ${opcaoDestino('na', 'Deixar sem ' + papelTxt + ' (N/A)', 'Elas aparecem em "Novas" no sistema para alguém assumir.', '', !colegas.length)}
+    ${opcaoDestino('manual', 'Escolher uma por uma', 'Depois de remover, abre a tela de redistribuição só com as propostas dele.')}
+    ${opcaoDestino('manter', 'Não mexer', 'As propostas continuam com o nome dele (não recomendado).')}
+    <label class="ms-opcao" style="margin-top:6px"><input type="checkbox" id="dc-finalizadas"> Também mover as ${fin.length} finalizadas (normalmente não: elas contam a produção dele no histórico)</label>
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-perigo" id="dc-ok" onclick="confirmarDesativar(${id})">Remover e aplicar</button></div>`)
+}
+async function confirmarDesativar(id) {
+  const c = CFG.colabs.find(x => x.id === id)
+  const destino = (document.querySelector('input[name=destino]:checked') || {}).value
+  if (!destino) { toast('Escolha o destino das propostas.', true); return }
+  const campo = campoDoPapel(c.papel)
+  const incluirFin = document.getElementById('dc-finalizadas').checked
+  const cods = propostasDaPessoa(c.sistema, c.nome, c.papel).filter(r => incluirFin || !r.final).map(r => r.codigo)
+  let mapa = null
+  if (destino === 'transferir') { const p = document.getElementById('dc-para').value; if (!p) { toast('Não há colega ativo para receber.', true); return } mapa = Object.fromEntries(cods.map(x => [x, p])) }
+  if (destino === 'dividir') { const ps = [...document.querySelectorAll('.dc-div:checked')].map(i => i.value); if (!ps.length) { toast('Marque ao menos uma pessoa.', true); return } mapa = distribuirIgual(cods, ps) }
+  if (destino === 'na') mapa = Object.fromEntries(cods.map(x => [x, 'N/A']))
+  const btn = document.getElementById('dc-ok'); btn.disabled = true; btn.textContent = 'Aplicando...'
+  try {
+    if (mapa && cods.length) await atribuir(c.sistema, mapa, campo)
+    await api(`config_colaboradores?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { ativo: false } })
+    await registrarLog(c.sistema, 'Colaborador removido da equipe', { nome: c.nome, destino, propostas: cods.length, incluiu_finalizadas: incluirFin, resumo: mapa ? contarPor(Object.values(mapa)) : null })
+    await carregarConfig(); fecharModal()
+    toast(`✓ ${c.nome} removido${mapa ? ` · ${cods.length} proposta(s) redistribuída(s)` : ''}`)
+    if (destino === 'manual') { RED.sis = c.sistema; RED.pessoa = c.nome; RED.campo = campo; irPara('redistribuir') } else renderColabs()
+  } catch(e) { toast('Erro: ' + e.message, true); btn.disabled = false; btn.textContent = 'Remover e aplicar' }
+}
+const contarPor = arr => arr.reduce((o, v) => (o[v] = (o[v] || 0) + 1, o), {})
+
+// ════════════ LINHAS DE CRÉDITO ════════════
+let LIN_SIS = 'micro'
+function renderLinhas() {
+  const sis = LIN_SIS
+  const regras = regrasLinha(sis)
+  const conta = {}
+  DADOS[sis].forEach(r => { conta[r.linha] = conta[r.linha] || { t: 0, a: 0 }; conta[r.linha].t++; if (!r.final) conta[r.linha].a++ })
+  const semRegra = Object.entries(conta).filter(([n]) => !regras.find(r => r.nome === n))
+  document.getElementById('conteudo').innerHTML = `<div class="card">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <div class="card-titulo" style="margin:0">🏷️ Linhas de crédito</div>${seletorSistema('LIN_SIS', 'renderLinhas')}
+      <button class="btn btn-pri" style="margin-left:auto" onclick="modalLinha()" ${CFG.ok ? '' : 'disabled'}>+ Adicionar linha</button>
+    </div>
+    <div class="card-sub">O sistema reconhece a linha pelo texto da planilha: as <b>palavras</b> precisam aparecer todas (sem acento). As regras são testadas na ordem da <b>prioridade</b> — por isso "Micro Rural Mulher" vem antes de "Micro Mulher". Linha <b>inativa</b>: propostas novas dela não entram mais no ${SIS[sis].nome}.</div>
+    ${avisoConfig()}
+    <div class="tab-wrap"><table class="t"><thead><tr><th>Prior.</th><th>Cor</th><th>Linha</th><th>Palavras na planilha</th><th>Situação</th><th class="n">Em andamento</th><th class="n">Total</th><th></th></tr></thead><tbody>
+    ${regras.map(l => `<tr>
+      <td class="mono">${l.prioridade}</td><td><span class="bolinha" style="background:${esc(l.cor)};width:16px;height:16px"></span></td>
+      <td><b>${esc(l.nome)}</b></td><td class="mono" style="font-size:12px">${esc(l.palavras)}</td>
+      <td>${l.ativa ? '<span class="tag tag-ok">Ativa</span>' : '<span class="tag tag-off">Inativa</span>'}</td>
+      <td class="n">${fmtInt((conta[l.nome] || {}).a || 0)}</td><td class="n">${fmtInt((conta[l.nome] || {}).t || 0)}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-sm" onclick="modalLinha(${l.id})">Editar</button>
+        ${l.ativa ? `<button class="btn btn-sm" onclick="modalDesativarLinha(${l.id})">Desativar</button>` : `<button class="btn btn-sm" onclick="alternarLinha(${l.id}, true)">Reativar</button>`}
+        ${(conta[l.nome] || {}).t ? `<button class="btn btn-sm" onclick="modalDestinoLinha(${l.id}, false)">Propostas…</button>` : `<button class="btn btn-sm" onclick="excluirRegraLinha(${l.id})">Excluir</button>`}
+      </td></tr>`).join('') || `<tr><td colspan="8" class="vazio">Nenhuma linha cadastrada.</td></tr>`}
+    </tbody></table></div>
+    ${semRegra.length ? `<div class="alerta alerta-aviso" style="margin-top:14px">Textos de linha nas propostas que nenhuma regra reconhece: ${semRegra.map(([n, c]) => `<b>${esc(n)}</b> (${c.t})`).join(', ')}.</div>` : ''}
+    <div style="margin-top:18px;border-top:1px solid var(--borda-suave);padding-top:14px">
+      <div class="bloco-titulo">🧪 Testar uma linha da planilha</div>
+      <div class="linha-form" style="margin-top:6px"><input type="text" id="teste-linha" placeholder="Cole o texto da coluna Linha de Crédito" style="min-width:340px" oninput="document.getElementById('teste-res').innerHTML = this.value ? 'Vira: <b>' + esc(linhaOficial(LIN_SIS, this.value)) + '</b>' + (LINHA_ATIVA(LIN_SIS, linhaOficial(LIN_SIS, this.value)) ? ' · entra no sistema' : ' · <span style=&quot;color:#B91C1C&quot;>NÃO entra (linha inativa ou sem regra)</span>') : ''"><span id="teste-res" style="font-size:13px"></span></div>
+    </div>
+  </div>`
+}
+const LINHA_ATIVA = (sis, nome) => !!regrasLinha(sis).find(l => l.nome === nome && l.ativa)
+function modalLinha(id) {
+  const sis = LIN_SIS
+  const l = id ? CFG.linhas.find(x => x.id === id) : { nome: '', palavras: '', prioridade: Math.max(0, ...regrasLinha(sis).map(x => x.prioridade)) + 1, cor: '#2563EB', ativa: true }
+  abrirModal(`<h3>${id ? 'Editar linha' : 'Adicionar linha'} — ${SIS[sis].nome}</h3>
+    <div class="m-sub">Exemplo: a planilha traz "MICRO RURAL MULHER" → palavras <span class="mono">RURAL,MULHER</span>.</div>
+    <div class="linha-form">
+      <div style="flex:1;min-width:200px"><label class="rot">Nome da linha</label><input type="text" id="ml-nome" style="width:100%" value="${esc(l.nome)}"></div>
+      <div style="flex:1;min-width:200px"><label class="rot">Palavras (separe por vírgula)</label><input type="text" id="ml-pal" style="width:100%" value="${esc(l.palavras)}" placeholder="RURAL,MULHER"></div>
+      <div><label class="rot">Prioridade</label><input type="number" id="ml-pri" value="${l.prioridade}" style="width:80px"></div>
+      <div><label class="rot">Cor</label><input type="color" id="ml-cor" value="${esc(l.cor)}"></div>
+    </div>
+    ${id ? `<div class="alerta alerta-info" style="margin-top:12px">Se mudar o <b>nome</b>, as propostas gravadas com o nome antigo também são renomeadas.</div>` : ''}
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-pri" onclick="salvarLinha(${id || 0})">Salvar</button></div>`)
+}
+async function salvarLinha(id) {
+  const sis = LIN_SIS
+  const nome = document.getElementById('ml-nome').value.trim()
+  const palavras = document.getElementById('ml-pal').value.split(',').map(x => semAcentoUp(x).trim()).filter(Boolean).join(',')
+  const prioridade = parseInt(document.getElementById('ml-pri').value, 10) || 100
+  const cor = document.getElementById('ml-cor').value
+  if (!nome || !palavras) { toast('Preencha o nome e ao menos uma palavra.', true); return }
+  const dup = CFG.linhas.find(x => x.sistema === sis && x.nome === nome && x.id !== id)
+  if (dup) { toast('Já existe uma linha com esse nome.', true); return }
+  try {
+    if (id) {
+      const antiga = CFG.linhas.find(x => x.id === id)
+      await api(`config_linhas?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { nome, palavras, prioridade, cor } })
+      if (antiga.nome !== nome) {
+        const cods = DADOS[sis].filter(r => r.linhaBruta === antiga.nome).map(r => r.codigo)
+        if (cods.length) await moverLinha(sis, cods, nome)
+      }
+      await registrarLog(sis, 'Linha editada', { de: antiga, para: { nome, palavras, prioridade, cor } })
+    } else {
+      await api('config_linhas', { method: 'POST', prefer: 'return=minimal', body: { sistema: sis, nome, palavras, prioridade, cor, ativa: true } })
+      await registrarLog(sis, 'Linha adicionada', { nome, palavras, prioridade })
+    }
+    await carregarConfig()
+    DADOS[sis].forEach(r => { r.linha = linhaOficial(sis, r.linhaBruta) })
+    fecharModal(); renderLinhas(); toast('✓ Linha salva')
+    if (linhaOficial(sis, nome) !== nome) toast(`Atenção: o nome "${nome}" não contém as palavras da regra — propostas movidas para ela não seriam reconhecidas.`, true)
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+async function alternarLinha(id, ativa) {
+  const l = CFG.linhas.find(x => x.id === id)
+  try {
+    await api(`config_linhas?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { ativa } })
+    await registrarLog(l.sistema, ativa ? 'Linha reativada' : 'Linha desativada', { nome: l.nome })
+    await carregarConfig(); renderLinhas(); toast(ativa ? `✓ ${l.nome} reativada` : `✓ ${l.nome} desativada`)
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+async function excluirRegraLinha(id) {
+  const l = CFG.linhas.find(x => x.id === id)
+  if (!confirm(`Excluir a regra da linha "${l.nome}"? Não há propostas nela.`)) return
+  try { await api(`config_linhas?id=eq.${id}`, { method: 'DELETE', prefer: 'return=minimal' }); await registrarLog(l.sistema, 'Linha excluída', { nome: l.nome }); await carregarConfig(); renderLinhas(); toast('✓ Excluída') }
+  catch(e) { toast('Erro: ' + e.message, true) }
+}
+function modalDesativarLinha(id) { modalDestinoLinha(id, true) }
+function modalDestinoLinha(id, desativar) {
+  const l = CFG.linhas.find(x => x.id === id), sis = l.sistema
+  const ps = DADOS[sis].filter(r => r.linha === l.nome)
+  const at = ps.filter(r => !r.final)
+  const outras = regrasLinha(sis).filter(x => x.id !== id && x.ativa)
+  abrirModal(`<h3>${desativar ? 'Desativar' : 'Propostas da'} linha ${esc(l.nome)}</h3>
+    <div class="m-sub">${SIS[sis].nome} · ${at.length} em andamento · ${ps.length - at.length} finalizadas${desativar ? ' · depois de desativada, propostas novas dessa linha não entram mais' : ''}</div>
+    <p style="font-size:13px;margin-bottom:10px">O que fazer com as propostas que já estão no sistema?</p>
+    <div style="margin-bottom:10px"><label class="rot">Quais propostas</label><select id="dl-escopo"><option value="ativas">Só as ${at.length} em andamento</option><option value="todas">Todas as ${ps.length}</option></select></div>
+    ${opcaoDestino('manter', 'Manter como estão', desativar ? 'Continuam no sistema e nos relatórios. Só param de entrar novas.' : 'Não mexe em nada.', '', true)}
+    ${opcaoDestino('mover', 'Mover para outra linha', 'Muda a linha das propostas.', `<div style="margin-top:6px"><select id="dl-para">${outras.map(x => `<option>${esc(x.nome)}</option>`).join('')}</select></div>`)}
+    ${opcaoDestino('arquivar', 'Arquivar', 'Somem das listas e do painel, mas ficam guardadas (dá para desarquivar no sistema).')}
+    ${opcaoDestino('excluir', 'Excluir do sistema', 'Apaga as propostas. Uma cópia fica em backup_excluidas.')}
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn ${desativar ? 'btn-perigo' : 'btn-pri'}" id="dl-ok" onclick="confirmarDestinoLinha(${id}, ${desativar})">${desativar ? 'Desativar e aplicar' : 'Aplicar'}</button></div>`)
+}
+async function confirmarDestinoLinha(id, desativar) {
+  const l = CFG.linhas.find(x => x.id === id), sis = l.sistema
+  const destino = (document.querySelector('input[name=destino]:checked') || {}).value
+  const escopo = document.getElementById('dl-escopo').value
+  const cods = DADOS[sis].filter(r => r.linha === l.nome && (escopo === 'todas' || !r.final)).map(r => r.codigo)
+  if (destino === 'excluir' && !confirm(`Excluir ${cods.length} proposta(s) do ${SIS[sis].nome}? Uma cópia fica no backup.`)) return
+  const btn = document.getElementById('dl-ok'); btn.disabled = true; btn.textContent = 'Aplicando...'
+  try {
+    if (cods.length) {
+      if (destino === 'mover') { const para = document.getElementById('dl-para').value; if (!para) throw new Error('Não há outra linha ativa.'); await moverLinha(sis, cods, para) }
+      if (destino === 'arquivar') await arquivarPropostas(sis, cods, true)
+      if (destino === 'excluir') await excluirPropostas(sis, cods)
+    }
+    if (desativar) await api(`config_linhas?id=eq.${id}`, { method: 'PATCH', prefer: 'return=minimal', body: { ativa: false } })
+    await registrarLog(sis, desativar ? 'Linha desativada' : 'Propostas de linha tratadas', { linha: l.nome, destino, escopo, propostas: cods.length })
+    await carregarConfig(); fecharModal(); renderLinhas()
+    toast(`✓ ${desativar ? l.nome + ' desativada' : 'Aplicado'}${destino !== 'manter' ? ` · ${cods.length} proposta(s)` : ''}`)
+  } catch(e) { toast('Erro: ' + e.message, true); btn.disabled = false; btn.textContent = 'Tentar de novo' }
+}
+
+// ════════════ REDISTRIBUIR ════════════
+const RED = { sis: 'micro', pessoa: '', campo: 'resp', situacao: 'ativas', linha: '', fase: '', busca: '', sel: new Set() }
+function pessoasAtivas(sis, campo) {
+  const papel = sis === 'micro' ? 'responsavel' : campo === 'estag' ? 'estagiario' : 'analista'
+  return CFG.colabs.filter(c => c.sistema === sis && c.ativo && c.papel === papel).map(c => c.nome)
+}
+function listaRedistribuir() {
+  let l = DADOS[RED.sis].filter(r => !r.arquivada)
+  if (RED.situacao === 'ativas') l = l.filter(r => !r.final)
+  if (RED.pessoa) l = l.filter(r => (RED.campo === 'estag' ? r.estag : r.resp) === RED.pessoa)
+  if (RED.linha) l = l.filter(r => r.linha === RED.linha)
+  if (RED.fase) l = l.filter(r => r.fase === RED.fase)
+  if (RED.busca) { const b = semAcentoUp(RED.busca); l = l.filter(r => semAcentoUp(r.codigo + ' ' + r.cliente).includes(b)) }
+  return l.sort((a, b) => (b.diasParado || 0) - (a.diasParado || 0))
+}
+function renderRedistribuir() {
+  if (RED.sis === 'micro') RED.campo = 'resp'
+  const lista = listaRedistribuir()
+  const nomesNaBase = [...new Set(DADOS[RED.sis].map(r => RED.campo === 'estag' ? r.estag : r.resp))].sort((a, b) => a === 'N/A' ? -1 : b === 'N/A' ? 1 : a.localeCompare(b, 'pt-BR'))
+  const ativos = pessoasAtivas(RED.sis, RED.campo)
+  const papelTxt = RED.sis === 'micro' ? 'responsável' : RED.campo === 'estag' ? 'estagiário' : 'analista'
+  RED.sel = new Set([...RED.sel].filter(c => lista.find(r => r.codigo === c)))
+  document.getElementById('conteudo').innerHTML = `<div class="card">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <div class="card-titulo" style="margin:0">🔁 Redistribuir propostas</div>
+      <div class="seg">${['micro', 'fgf'].map(s => `<button class="${RED.sis === s ? 'on' : ''}" onclick="RED.sis='${s}'; RED.pessoa=''; RED.linha=''; RED.sel.clear(); renderRedistribuir()">${SIS[s].nome}</button>`).join('')}</div>
+      ${RED.sis === 'fgf' ? `<div class="seg"><button class="${RED.campo === 'resp' ? 'on' : ''}" onclick="RED.campo='resp'; RED.pessoa=''; RED.sel.clear(); renderRedistribuir()">Analista</button><button class="${RED.campo === 'estag' ? 'on' : ''}" onclick="RED.campo='estag'; RED.pessoa=''; RED.sel.clear(); renderRedistribuir()">Estagiário</button></div>` : ''}
+    </div>
+    <div class="card-sub">Filtre, marque as propostas e escolha para quem vão. A mudança vale na hora para o ${SIS[RED.sis].nome}.</div>
+    <div class="linha-form" style="margin-bottom:12px">
+      <div><label class="rot">${papelTxt[0].toUpperCase() + papelTxt.slice(1)} atual</label><select onchange="RED.pessoa=this.value; RED.sel.clear(); renderRedistribuir()"><option value="">Todos</option>${nomesNaBase.map(n => `<option ${RED.pessoa === n ? 'selected' : ''} value="${esc(n)}">${esc(n)}${n !== 'N/A' && !ativos.includes(n) ? ' (inativo)' : ''}</option>`).join('')}</select></div>
+      <div><label class="rot">Situação</label><select onchange="RED.situacao=this.value; renderRedistribuir()"><option value="ativas" ${RED.situacao === 'ativas' ? 'selected' : ''}>Em andamento</option><option value="todas" ${RED.situacao === 'todas' ? 'selected' : ''}>Todas</option></select></div>
+      <div><label class="rot">Fase</label><select onchange="RED.fase=this.value; renderRedistribuir()"><option value="">Todas</option>${FASES.map(f => `<option ${RED.fase === f ? 'selected' : ''}>${f}</option>`).join('')}</select></div>
+      <div><label class="rot">Linha</label><select onchange="RED.linha=this.value; renderRedistribuir()"><option value="">Todas</option>${[...new Set(DADOS[RED.sis].map(r => r.linha))].sort().map(l => `<option ${RED.linha === l ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
+      <div><label class="rot">Buscar</label><input type="text" value="${esc(RED.busca)}" placeholder="código ou cliente" onchange="RED.busca=this.value; renderRedistribuir()"></div>
+    </div>
+    <div class="alerta alerta-info" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px">
+      <b id="red-cont">${RED.sel.size} selecionada(s)</b> de ${lista.length}
+      <span style="margin-left:auto">Passar para</span>
+      <select id="red-para">${ativos.map(n => `<option>${esc(n)}</option>`).join('')}<option value="N/A">N/A (sem ${papelTxt})</option></select>
+      <button class="btn btn-pri btn-sm" onclick="aplicarRedistribuicao('uma')">Aplicar</button>
+      <button class="btn btn-sm" onclick="modalDividir()">Dividir igualmente…</button>
+    </div>
+    <div class="tab-wrap" style="max-height:62vh;overflow-y:auto"><table class="t"><thead><tr>
+      <th><input type="checkbox" ${lista.length && RED.sel.size === lista.length ? 'checked' : ''} onchange="RED.sel = this.checked ? new Set(listaRedistribuir().map(r => r.codigo)) : new Set(); renderRedistribuir()"></th>
+      <th>Código</th><th>Cliente</th><th>Linha</th><th>Etapa</th><th>${RED.sis === 'fgf' ? 'Analista' : 'Responsável'}</th>${RED.sis === 'fgf' ? '<th>Estagiário</th>' : ''}<th class="n">Dias parada</th><th class="n">Valor</th></tr></thead><tbody>
+      ${lista.slice(0, 800).map(r => `<tr>
+        <td><input type="checkbox" ${RED.sel.has(r.codigo) ? 'checked' : ''} onchange="if(this.checked) RED.sel.add('${r.codigo}'); else RED.sel.delete('${r.codigo}'); document.getElementById('red-cont').textContent = RED.sel.size + ' selecionada(s)'"></td>
+        <td class="mono"><b>${esc(r.codigo)}</b>${r.transferencia ? ' <span title="transferência">⇄</span>' : ''}</td><td>${esc(r.cliente) || '—'}</td>
+        <td><span class="bolinha" style="background:${corLinha(r.sis, r.linha)}"></span>${esc(r.linha)}</td><td>${esc(etapaLimpa(r.etapa))}</td>
+        <td><span class="bolinha" style="background:${corPessoa(r.sis, r.resp)}"></span>${esc(r.resp)}</td>${r.sis === 'fgf' ? `<td>${esc(r.estag)}</td>` : ''}
+        <td class="n" style="${r.diasParado > DIAS_PARADA ? 'color:#B91C1C;font-weight:600' : ''}">${r.diasParado ?? '—'}</td><td class="n">${fmtBRL(r.valor)}</td></tr>`).join('') || `<tr><td colspan="9" class="vazio">Nenhuma proposta com esses filtros.</td></tr>`}
+    </tbody></table></div>
+    ${lista.length > 800 ? `<div class="card-sub" style="margin-top:8px">Mostrando as 800 primeiras de ${lista.length}. "Selecionar tudo" marca todas as ${lista.length}.</div>` : ''}
+  </div>`
+}
+async function aplicarRedistribuicao(modo, pessoas) {
+  const cods = [...RED.sel]
+  if (!cods.length) { toast('Marque ao menos uma proposta.', true); return }
+  const mapa = modo === 'dividir' ? distribuirIgual(cods, pessoas) : Object.fromEntries(cods.map(c => [c, document.getElementById('red-para').value]))
+  try {
+    await atribuir(RED.sis, mapa, RED.campo)
+    await registrarLog(RED.sis, 'Propostas redistribuídas', { campo: RED.campo === 'estag' ? 'estagiario' : 'responsavel', quantidade: cods.length, resumo: contarPor(Object.values(mapa)) })
+    RED.sel.clear(); fecharModal(); renderRedistribuir()
+    toast(`✓ ${cods.length} proposta(s) redistribuída(s)`)
+  } catch(e) { toast('Erro: ' + e.message, true) }
+}
+function modalDividir() {
+  if (!RED.sel.size) { toast('Marque as propostas primeiro.', true); return }
+  const ativos = pessoasAtivas(RED.sis, RED.campo)
+  abrirModal(`<h3>Dividir ${RED.sel.size} proposta(s) igualmente</h3><div class="m-sub">Distribui em rodízio entre as pessoas marcadas.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 16px">${ativos.map(n => `<label class="ms-opcao"><input type="checkbox" class="div-p" value="${esc(n)}" checked> ${esc(n)}</label>`).join('')}</div>
+    <div class="modal-acoes"><button class="btn" onclick="fecharModal()">Cancelar</button><button class="btn btn-pri" onclick="const p=[...document.querySelectorAll('.div-p:checked')].map(i=>i.value); if(!p.length){toast('Marque alguém.',true);return} aplicarRedistribuicao('dividir', p)">Dividir</button></div>`)
+}
+
+// ════════════ REGISTRO DE AÇÕES ════════════
+async function renderLog() {
+  const el = document.getElementById('conteudo')
+  el.innerHTML = '<div class="carregando"><div class="spinner"></div></div>'
+  try {
+    const l = await api('admin_log?select=*&order=criado_em.desc&limit=300')
+    el.innerHTML = `<div class="card"><div class="card-titulo">📜 Registro de ações</div><div class="card-sub">Tudo o que foi alterado pelo Administrador (últimas 300 ações).</div>
+      <div class="tab-wrap"><table class="t"><thead><tr><th>Quando</th><th>Quem</th><th>Sistema</th><th>Ação</th><th>Detalhes</th></tr></thead><tbody>
+      ${(l || []).map(x => `<tr><td style="white-space:nowrap">${new Date(x.criado_em).toLocaleString('pt-BR')}</td><td>${esc(x.usuario)}</td><td>${x.sistema ? `<span class="chip-sis chip-${x.sistema}">${SIS[x.sistema] ? SIS[x.sistema].curto : esc(x.sistema)}</span>` : ''}</td><td><b>${esc(x.acao)}</b></td><td class="mono" style="font-size:11.5px;max-width:560px;white-space:normal">${esc(JSON.stringify(x.detalhes))}</td></tr>`).join('') || '<tr><td colspan="5" class="vazio">Nenhuma ação registrada ainda.</td></tr>'}
+      </tbody></table></div></div>`
+  } catch(e) { el.innerHTML = `<div class="alerta alerta-erro">Não foi possível ler o registro: ${esc(e.message)}</div>` }
+}
+
+// ════════════ INÍCIO ════════════
+async function iniciarApp() {
+  document.getElementById('tela-login').style.display = 'none'
+  document.getElementById('app').style.display = ''
+  document.getElementById('hdr-usuario').textContent = SESSAO.email || ''
+  document.getElementById('conteudo').innerHTML = '<div class="carregando"><div class="spinner"></div>Carregando os dois sistemas...</div>'
+  try {
+    await carregarTudo()
+    renderFiltros(); renderAba()
+  } catch(e) {
+    document.getElementById('conteudo').innerHTML = `<div class="alerta alerta-erro">Erro ao carregar os dados: ${esc(e.message)}</div>`
+  }
+}
+;(function () {
+  const s = ler('admin_sessao')
+  if (s) { try { SESSAO = JSON.parse(s) } catch(e) { SESSAO = null } }
+  if (SESSAO && SESSAO.refresh_token) iniciarApp()
+  else document.getElementById('tela-login').style.display = 'flex'
+})()
+
+</script>
+</body>
+</html>
